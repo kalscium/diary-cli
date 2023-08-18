@@ -2,6 +2,7 @@
 name = "diary-cli"
 version = "0.1.0"
 edition = "2021"
+description = "A powerful cli for documenting and keeping a diary."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,3 +10,4 @@ edition = "2021"
 lazy-db = "1.1.0"
 soulog = "1.0.0"
 rustyline = "12.0.0"
+clap = { version = "4.3.22", features = ["derive"] }
