@@ -8,6 +8,10 @@ impl Logger for DiaryLogger {
     fn new() -> Self { Self { retry_count: 3 } }
     fn hollow(&self) -> Self { Self::new() }
 
+    fn log(&mut self, log: Log) {
+        self.retry_count = 3;
+        println!("{}", colour_format!(blue("["), cyan(log.origin), blue("] "), none(log.message)));
+    }
 
     fn error(&mut self, log: Log) -> ErrorResponse {
         let message = match log.log_type {
