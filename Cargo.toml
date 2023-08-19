@@ -9,5 +9,5 @@ description = "A powerful cli for documenting and keeping a diary."
 [dependencies]
 lazy-db = "1.1.0"
 soulog = "1.0.0"
-rustyline = "12.0.0"
+toml = "0.7.6"
 clap = { version = "4.3.22", features = ["derive"] }
