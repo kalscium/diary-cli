@@ -1,6 +1,8 @@
-use toml::*;
+use toml::Table;
+use lazy_db::*;
 use soulog::*;
 use std::path::Path;
+use crate::list;
 
 // Some ease of life utils for section
 macro_rules! get {
@@ -22,6 +24,30 @@ macro_rules! get {
             }
         }
     }}
+}
+
+macro_rules! read_container {
+    ($key:ident from $container:ident as $func:ident with $logger:ident) => {{
+        let data = if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
+        if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        })
+    }}
+}
+
+macro_rules! write_container {
+    (($value:expr) into $container:ident at $key:ident as $func:ident with $logger:ident) => {
+        let data_writer = if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
+        if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        });
+    }
 }
 
 pub struct Section {
@@ -64,5 +90,31 @@ impl Section {
             notes: notes.into_boxed_slice(),
         }
     }
-}
 
+    pub fn load(container: LazyContainer, mut logger: impl Logger) -> Self {
+        let title = read_container!(title from container as collect_string with logger);
+        let path = read_container!(title from container as collect_string with logger);
+        let notes = list::read(
+            |data| data.collect_string(),
+            if_err!((logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry container.read_container("notes")),
+            logger,
+        );
+
+        Self {
+            title,
+            path,
+            notes,
+        }
+    }
+
+    pub fn store(&self, container: LazyContainer, mut logger: impl Logger) {
+        write_container!((&self.title) into container at title as new_string with logger);
+        write_container!((&self.path) into container at path as new_string with logger);
+        list::write(
+            self.notes.as_ref(),
+            |file, data| LazyData::new_string(file, data),
+            container,
+            logger
+        );
+    }
+}
