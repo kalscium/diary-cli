@@ -110,10 +110,16 @@ impl Section {
         }
     }
 
+    pub fn clear_cache(&mut self) {
+        self.title = None;
+        self.path = None;
+        self.notes = None;
+    }
+
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &this.container,
+            &if_err!((logger) [EntrySection, err => ("While reading from section notes: {err:?}")] retry this.container.read_container("notes")),
             logger
         )
     });
