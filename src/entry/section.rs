@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::list;
 use crate::unwrap_opt;
 use crate::cache_field;
+use std::fs;
 
 // Some ease of life macros
 macro_rules! get {
@@ -44,7 +45,7 @@ pub struct Section {
     pub container: LazyContainer,
     pub title: Option<String>,
     pub notes: Option<Box<[String]>>,
-    pub path: Option<String>,
+    pub content: Option<String>,
 }
 
 impl Section {
@@ -60,6 +61,8 @@ impl Section {
             return logger.crash();
         };
 
+        let content = if_err!((logger) [EntrySection, err => ("While reading entry '{entry}', section {idx}'s path contents: {err:?}")] retry fs::read_to_string(&path));
+
         // Parse notes
         let mut notes = Vec::with_capacity(raw_notes.len());
         for i in raw_notes {
@@ -74,14 +77,15 @@ impl Section {
             )
         };
         
-        let this = Self {
+        let mut this = Self {
             container,
             title: Some(title),
-            path: Some(path),
+            content: Some(content),
             notes: Some(notes.into_boxed_slice()),
         };
 
         this.store_lazy(logger);
+        this.clear_cache();
         this
     }
 
@@ -90,7 +94,7 @@ impl Section {
     pub fn store_lazy(&self, mut logger: impl Logger) {
         // Only store them if they are accessed (maybe modified)
         if let Some(x) = &self.title { write_container!((x) into (self.container) at title as new_string with logger); }
-        if let Some(x) = &self.path { write_container!((x) into (self.container) at path as new_string with logger); }
+        if let Some(x) = &self.content { write_container!((x) into (self.container) at path as new_string with logger); }
         if let Some(x) = &self.notes {
             list::write(
                 x.as_ref(),
@@ -106,13 +110,13 @@ impl Section {
             container,
             title: None,
             notes: None,
-            path: None,
+            content: None,
         }
     }
 
     pub fn clear_cache(&mut self) {
         self.title = None;
-        self.path = None;
+        self.content = None;
         self.notes = None;
     }
 
@@ -128,7 +132,7 @@ impl Section {
         read_container!(title from (this.container) as collect_string with logger)
     });
 
-    cache_field!(path(this, logger) -> String {
+    cache_field!(content(this, logger) -> String {
         read_container!(path from (this.container) as collect_string with logger)
     });
 }
