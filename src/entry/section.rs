@@ -3,26 +3,15 @@ use lazy_db::*;
 use soulog::*;
 use std::path::Path;
 use crate::list;
+use crate::unwrap_opt;
 
 // Some ease of life macros
 macro_rules! get {
     ($key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
         let key = stringify!($key);
-        let obj = match $table.get(key) {
-            Some(x) => x,
-            None => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
-                $logger.crash()
-            }
-        };
+        let obj = unwrap_opt!(($table.get(key)) with $logger, format: EntrySection("Entry '{0}', seciton {1} must have '{key}' attribute", $entry, $idx));
 
-        match obj.$func() {
-            Some(x) => x,
-            None => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
-                $logger.crash()
-            }
-        }
+        unwrap_opt!((obj.$func()) with $logger, format: EntrySection("Entry '{0}', section {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
     }}
 }
 
