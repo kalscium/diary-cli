@@ -1,7 +1,7 @@
 use lazy_db::*;
 use soulog::*;
 
-pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>, container: LazyContainer, mut logger: impl Logger) {
+pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
     for (i, x) in list.iter().enumerate() {
         let data_writer = 
             if_err!((logger) [ListIO, err => ("While writing element of list: {:?}", err)] retry container.data_writer(i.to_string()));
@@ -19,7 +19,7 @@ pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>,
     })
 }
 
-pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: LazyContainer, mut logger: impl Logger) {
+pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
     let length = if_err!((logger) [ListIO, err => ("While reading list legnth: {:?}", err)] retry container.read_data("length"));
     let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u8()} manual {
         Crash => {
@@ -42,7 +42,7 @@ pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: LazyCont
     })
 }
 
-pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: LazyContainer, mut logger: impl Logger) -> Box<[T]> {
+pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> Box<[T]> {
     let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] retry container.read_data("length"));
     let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u8()} manual {
         Crash => {

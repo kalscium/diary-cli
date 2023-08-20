@@ -15,19 +15,19 @@ fn isol_list() {
     write(
         &og_list,
         |file, data| LazyData::new_u8(file, *data),
-        LazyContainer::init(&path).unwrap(),
+        &LazyContainer::init(&path).unwrap(),
         logger.hollow(),
     );
 
     push(
         |x| LazyData::new_u8(x, 86),
-        LazyContainer::load(&path).unwrap(),
+        &LazyContainer::load(&path).unwrap(),
         logger.hollow()
     );
 
     let new_list = read(
         |data| data.collect_u8(),
-        LazyContainer::load(path).unwrap(),
+        &LazyContainer::load(path).unwrap(),
         logger,
     );
 

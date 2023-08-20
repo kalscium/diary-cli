@@ -4,6 +4,7 @@ use soulog::*;
 use std::path::Path;
 use crate::list;
 use crate::unwrap_opt;
+use crate::cache_field;
 
 // Some ease of life macros
 macro_rules! get {
@@ -16,7 +17,7 @@ macro_rules! get {
 }
 
 macro_rules! read_container {
-    ($key:ident from $container:ident as $func:ident with $logger:ident) => {{
+    ($key:ident from ($container:expr) as $func:ident with $logger:ident) => {{
         let data = if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
         if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
             Crash => {
@@ -28,7 +29,7 @@ macro_rules! read_container {
 }
 
 macro_rules! write_container {
-    (($value:expr) into $container:ident at $key:ident as $func:ident with $logger:ident) => {
+    (($value:expr) into ($container:expr) at $key:ident as $func:ident with $logger:ident) => {
         let data_writer = if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
         if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
             Crash => {
@@ -39,22 +40,22 @@ macro_rules! write_container {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
 pub struct Section {
-    pub title: String,
-    pub notes: Box<[String]>,
-    pub path: String,
+    pub container: LazyContainer,
+    pub title: Option<String>,
+    pub notes: Option<Box<[String]>>,
+    pub path: Option<String>,
 }
 
 impl Section {
-    pub fn new(table: Table, entry: &str, idx: u8, mut logger: impl Logger) -> Self {
+    pub fn new(table: Table, container: LazyContainer, entry: &str, idx: u8, mut logger: impl Logger) -> Self {
         // Get the basic needed data
         let title = get!(title at (entry, idx) from table as as_str with logger).to_string();
-        let path = get!(path at (entry, idx) from table as as_str with logger);
+        let path = get!(path at (entry, idx) from table as as_str with logger).to_string();
         let raw_notes = get!(notes at (entry, idx) from table as as_array with logger);
 
         // Check if path exists
-        if !Path::new(path).exists() {
+        if !Path::new(&path).exists() {
             logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Path '{path}' specified in entry '{entry}', section {idx} does not exist"), &[]));
             return logger.crash();
         };
@@ -72,39 +73,62 @@ impl Section {
                 }
             )
         };
+        
+        let this = Self {
+            container,
+            title: Some(title),
+            path: Some(path),
+            notes: Some(notes.into_boxed_slice()),
+        };
 
-        // Construct Self
-        Self {
-            title,
-            path: path.to_string(),
-            notes: notes.into_boxed_slice(),
+        this.store_lazy(logger);
+        this
+    }
+
+    pub fn as_container(&self) -> &LazyContainer { &self.container }
+    
+    pub fn store_lazy(&self, mut logger: impl Logger) {
+        // Only store them if they are accessed (maybe modified)
+        if let Some(x) = &self.title { write_container!((x) into (self.container) at title as new_string with logger); }
+        if let Some(x) = &self.path { write_container!((x) into (self.container) at path as new_string with logger); }
+        if let Some(x) = &self.notes {
+            list::write(
+                x.as_ref(),
+                |file, data| LazyData::new_string(file, data),
+                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("notes")),
+                logger
+            );
         }
     }
 
-    pub fn load(container: LazyContainer, mut logger: impl Logger) -> Self {
-        let title = read_container!(title from container as collect_string with logger);
-        let path = read_container!(path from container as collect_string with logger);
-        let notes = list::read(
+    pub fn load_lazy(container: LazyContainer) -> Self {
+        Self {
+            container,
+            title: None,
+            notes: None,
+            path: None,
+        }
+    }
+
+    cache_field!(notes(this, logger) -> Box<[String]> {
+        list::read(
             |data| data.collect_string(),
-            if_err!((logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry container.read_container("notes")),
-            logger,
-        );
-
-        Self {
-            title,
-            path,
-            notes,
-        }
-    }
-
-    pub fn store(&self, container: LazyContainer, mut logger: impl Logger) {
-        write_container!((&self.title) into container at title as new_string with logger);
-        write_container!((&self.path) into container at path as new_string with logger);
-        list::write(
-            self.notes.as_ref(),
-            |file, data| LazyData::new_string(file, data),
-            if_err!((logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry container.new_container("notes")),
+            &this.container,
             logger
-        );
+        )
+    });
+
+    cache_field!(title(this, logger) -> String {
+        read_container!(title from (this.container) as collect_string with logger)
+    });
+
+    cache_field!(path(this, logger) -> String {
+        read_container!(path from (this.container) as collect_string with logger)
+    });
+}
+
+impl Drop for Section {
+    fn drop(&mut self) {
+        self.store_lazy(crate::DiaryLogger::new());
     }
 }

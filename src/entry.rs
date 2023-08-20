@@ -17,6 +17,19 @@ macro_rules! unwrap_opt {
     }
 }
 
+#[macro_export]
+macro_rules! cache_field {
+    ($name:ident($this:ident, $logger:ident) -> $type:ty $code:block) => {
+        #[allow(unused_mut)]
+        pub fn $name(&mut self, mut $logger: impl Logger) -> &$type {
+            let $this = self;
+            if $this.$name.is_none() {
+                $this.$name = Some($code);
+            }; $this.$name.as_ref().unwrap()
+        }
+    }
+}
+
 macro_rules! get {
     ($key:ident at $entry:ident from $table:ident as $func:ident with $logger:ident) => {{
         let key = stringify!($key);
