@@ -13,13 +13,14 @@ fn isol_section() {
     let tmp = new_env();
     let logger = sbl::PanicLogger::new();
     let path = tmp.get_path().join("Section");
-    let container = LazyContainer::init(path).unwrap();
-    fs::write("example-path.txt", "nothing").unwrap();
-    let toml = "
+    let container = LazyContainer::init(&path).unwrap();
+    let example_path = tmp.get_path().to_string_lossy().to_string() + "/example-path.txt";
+    fs::write(&example_path, "nothing").unwrap();
+    let toml = format!("
         title = 'Example Title'
-        path = 'example-path.txt'
+        path = '{example_path}'
         notes = [ 'note1', 'note2', 'note3' ]
-    ";
+    ");
 
     // Store
     let mut section = Section::new(
@@ -37,6 +38,6 @@ fn isol_section() {
     let notes = section.notes(logger.hollow());
 
     assert_eq!(title, "Example Title");
-    assert_eq!(path, "example-path.txt");
+    assert_eq!(path, example_path);
     assert_eq!(notes, &vec![String::from("note1"), String::from("note2"), String::from("note3")].into_boxed_slice());
 }
