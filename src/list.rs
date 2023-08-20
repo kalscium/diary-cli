@@ -19,6 +19,29 @@ pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>,
     })
 }
 
+pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: LazyContainer, mut logger: impl Logger) {
+    let length = if_err!((logger) [ListIO, err => ("While reading list legnth: {:?}", err)] retry container.read_data("length"));
+    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u8()} manual {
+        Crash => {
+            logger.error(Log::new(LogType::Fatal, "ListIO", &format!("{:#?}", err), &[]));
+            logger.crash()
+        }
+    });
+
+    let data_writer = if_err!((logger) [ListIO, err => ("While pushing to list: {:?}", err)] retry container.data_writer(length.to_string()));
+    if_err!((logger) [ListIO, err => ("While pushing to list: {:?}", err)] {f(data_writer)} manual {
+        Crash => {
+            logger.error(Log::new(LogType::Fatal, "ListIO", &format!("{err:#?}"), &[]));
+            logger.crash()
+        }
+    });
+
+    if_err!((logger) [ListIO, err => ("{:?}", err)] retry {
+        let data_writer = if_err!((logger) [ListIO, err => ("While writing list length: {:?}", err)] retry container.data_writer("length"));
+        LazyData::new_u8(data_writer, length + 1)
+    })
+}
+
 pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: LazyContainer, mut logger: impl Logger) -> Box<[T]> {
     let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] retry container.read_data("length"));
     let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u8()} manual {

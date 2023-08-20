@@ -19,11 +19,18 @@ fn isol_list() {
         logger.hollow(),
     );
 
+    push(
+        |x| LazyData::new_u8(x, 86),
+        LazyContainer::load(&path).unwrap(),
+        logger.hollow()
+    );
+
     let new_list = read(
         |data| data.collect_u8(),
         LazyContainer::load(path).unwrap(),
         logger,
     );
 
-    assert!(og_list.iter().enumerate().all(|(i, x)| *x == new_list[i]))
+    assert!(og_list.iter().enumerate().all(|(i, x)| *x == new_list[i]));
+    assert_eq!(new_list[new_list.len()-1], 86);
 }
