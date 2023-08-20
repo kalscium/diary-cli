@@ -3,7 +3,52 @@ use lazy_db::*;
 use soulog::*;
 use std::path::Path;
 use crate::list;
-use super::*;
+
+// Some ease of life macros
+macro_rules! get {
+    ($key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
+        let key = stringify!($key);
+        let obj = match $table.get(key) {
+            Some(x) => x,
+            None => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
+                $logger.crash()
+            }
+        };
+
+        match obj.$func() {
+            Some(x) => x,
+            None => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
+                $logger.crash()
+            }
+        }
+    }}
+}
+
+macro_rules! read_container {
+    ($key:ident from $container:ident as $func:ident with $logger:ident) => {{
+        let data = if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
+        if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        })
+    }}
+}
+
+macro_rules! write_container {
+    (($value:expr) into $container:ident at $key:ident as $func:ident with $logger:ident) => {
+        let data_writer = if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
+        if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        });
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Section {
