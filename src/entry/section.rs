@@ -11,7 +11,7 @@ macro_rules! get {
         let obj = match $table.get(key) {
             Some(x) => x,
             None => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have {key} attribute", $entry, $idx), &[]));
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
                 $logger.crash()
             }
         };
@@ -19,7 +19,7 @@ macro_rules! get {
         match obj.$func() {
             Some(x) => x,
             None => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have {key} attribute", $entry, $idx), &[]));
+                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx), &[]));
                 $logger.crash()
             }
         }
@@ -50,6 +50,7 @@ macro_rules! write_container {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Section {
     pub title: String,
     pub notes: Box<[String]>,
@@ -65,7 +66,7 @@ impl Section {
 
         // Check if path exists
         if !Path::new(path).exists() {
-            logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Path '{path}' specified in entry '{entry}', section {idx}"), &[]));
+            logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Path '{path}' specified in entry '{entry}', section {idx} does not exist"), &[]));
             return logger.crash();
         };
 
@@ -93,7 +94,7 @@ impl Section {
 
     pub fn load(container: LazyContainer, mut logger: impl Logger) -> Self {
         let title = read_container!(title from container as collect_string with logger);
-        let path = read_container!(title from container as collect_string with logger);
+        let path = read_container!(path from container as collect_string with logger);
         let notes = list::read(
             |data| data.collect_string(),
             if_err!((logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry container.read_container("notes")),
@@ -113,7 +114,7 @@ impl Section {
         list::write(
             self.notes.as_ref(),
             |file, data| LazyData::new_string(file, data),
-            container,
+            if_err!((logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry container.new_container("notes")),
             logger
         );
     }

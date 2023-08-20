@@ -6,7 +6,7 @@ use lazy_db::*;
 use isol::*;
 
 #[test]
-fn list() {
+fn isol_list() {
     let tmp = new_env();
     let logger = sbl::PanicLogger::new();
     let path = tmp.get_path().join("Container");
