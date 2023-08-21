@@ -27,6 +27,11 @@ fn isol_entry() {
         title = 'Example Section Title'
         notes = [ 'note1', 'note2', 'note3' ]
         path = '{example_path}'
+
+        [[section]]
+        title = 'Another Example Section Title'
+        notes = [ 'note1', 'note2' ]
+        path = '{example_path}'
     ");
 
     // Store

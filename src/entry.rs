@@ -148,6 +148,7 @@ impl Entry {
         };
         this.store_lazy(logger.hollow());
         log!((logger) Entry("Successfully written entry into database"));
+        log!((logger) Entry("")); // spacer
         this.clear_cache();
         this
     }
