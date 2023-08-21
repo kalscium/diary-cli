@@ -13,7 +13,7 @@ fn isol_section() {
     let tmp = new_env();
     let logger = sbl::PanicLogger::new();
     let content = tmp.get_path().join("Section");
-    let container = LazyContainer::init(&content).unwrap();
+    let container = LazyContainer::init(content).unwrap();
     let example_path = tmp.get_path().to_string_lossy().to_string() + "/example-path.txt";
     fs::write(&example_path, "example content of a file").unwrap();
     let toml = format!("
@@ -24,7 +24,7 @@ fn isol_section() {
 
     // Store
     let mut section = Section::new(
-        toml.parse::<Table>().unwrap(),
+        &toml.parse::<Table>().unwrap(),
         container,
         "example-entry.toml",
         0,

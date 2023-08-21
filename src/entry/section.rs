@@ -49,7 +49,7 @@ pub struct Section {
 }
 
 impl Section {
-    pub fn new(table: Table, container: LazyContainer, entry: &str, idx: u8, mut logger: impl Logger) -> Self {
+    pub fn new(table: &Table, container: LazyContainer, entry: &str, idx: u8, mut logger: impl Logger) -> Self {
         // Get the basic needed data
         let title = get!(title at (entry, idx) from table as as_str with logger).to_string();
         let path = get!(path at (entry, idx) from table as as_str with logger).to_string();
