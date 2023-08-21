@@ -88,15 +88,17 @@ pub struct Entry {
 
 impl Entry {
     pub fn new(table: Table, entry_path: &str, container: LazyContainer, mut logger: impl Logger) -> Self {
-        let title = get!(title at entry_path from table as as_str with logger).to_string();
-        let description = get!(description at entry_path from table as as_str with logger).to_string();
-        let raw_notes = get!(notes at entry_path from table as as_array with logger);
-        let raw_groups = get!(groups at entry_path from table as as_array with logger);
+        let entry_table = get!(entry at entry_path from table as as_table with logger); // For nice entry nesting
+
+        let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
+        let description = get!(description at entry_path from entry_table as as_str with logger).to_string();
+        let raw_notes = get!(notes at entry_path from entry_table as as_array with logger);
+        let raw_groups = get!(groups at entry_path from entry_table as as_array with logger);
         let raw_sections = get!(section at entry_path from table as as_array with logger);
 
         // Get date
         let date: toml::value::Date = unwrap_opt!(
-            (get!(date at entry_path from table as as_datetime with logger).date)
+            (get!(date at entry_path from entry_table as as_datetime with logger).date)
             with logger,
             format: Entry("Datetime 'date' must contain the date")
         ); let date = [ date.day as u16, date.month as u16, date.year ];

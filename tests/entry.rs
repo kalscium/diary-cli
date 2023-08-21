@@ -16,6 +16,7 @@ fn isol_entry() {
     let example_path = tmp.get_path().to_string_lossy().to_string() + "/example-path.txt";
     fs::write(&example_path, "example content of a file").unwrap();
     let toml = format!("
+        [entry]
         title = 'Example Entry Title'
         description = 'Example Entry Description'
         groups = [ '2023', 'entry', 'term1' ]
@@ -38,5 +39,6 @@ fn isol_entry() {
 
     // Load
     entry.clear_cache();
-    entry.fill_cache(logger);
+    entry.fill_cache(logger.hollow());
+    entry.sections(logger.hollow())[0].fill_cache(logger);
 }
