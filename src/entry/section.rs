@@ -1,10 +1,8 @@
 use toml::Table;
-use lazy_db::*;
+use super::*;
 use soulog::*;
 use std::path::Path;
 use crate::list;
-use crate::unwrap_opt;
-use crate::cache_field;
 use std::fs;
 
 // Some ease of life macros
@@ -15,30 +13,6 @@ macro_rules! get {
 
         unwrap_opt!((obj.$func()) with $logger, format: EntrySection("Entry '{0}', section {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
     }}
-}
-
-macro_rules! read_container {
-    ($key:ident from ($container:expr) as $func:ident with $logger:ident) => {{
-        let data = if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
-        if_err!(($logger) [EntrySection, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
-            Crash => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
-                $logger.crash()
-            }
-        })
-    }}
-}
-
-macro_rules! write_container {
-    (($value:expr) into ($container:expr) at $key:ident as $func:ident with $logger:ident) => {
-        let data_writer = if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
-        if_err!(($logger) [EntrySection, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
-            Crash => {
-                $logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("{:#?}", err), &[]));
-                $logger.crash()
-            }
-        });
-    }
 }
 
 pub struct Section {
@@ -89,12 +63,10 @@ impl Section {
         this
     }
 
-    pub fn as_container(&self) -> &LazyContainer { &self.container }
-    
     pub fn store_lazy(&self, mut logger: impl Logger) {
         // Only store them if they are accessed (maybe modified)
-        if let Some(x) = &self.title { write_container!((x) into (self.container) at title as new_string with logger); }
-        if let Some(x) = &self.content { write_container!((x) into (self.container) at path as new_string with logger); }
+        if let Some(x) = &self.title { write_container!((x) into EntrySection(self.container) at title as new_string with logger); }
+        if let Some(x) = &self.content { write_container!((x) into EntrySection(self.container) at path as new_string with logger); }
         if let Some(x) = &self.notes {
             list::write(
                 x.as_ref(),
@@ -129,11 +101,11 @@ impl Section {
     });
 
     cache_field!(title(this, logger) -> String {
-        read_container!(title from (this.container) as collect_string with logger)
+        read_container!(title from EntrySection(this.container) as collect_string with logger)
     });
 
     cache_field!(content(this, logger) -> String {
-        read_container!(path from (this.container) as collect_string with logger)
+        read_container!(path from EntrySection(this.container) as collect_string with logger)
     });
 }
 

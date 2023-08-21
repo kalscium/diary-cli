@@ -3,6 +3,12 @@ pub use section::*;
 use toml::Table;
 use soulog::*;
 use lazy_db::*;
+pub use crate::{
+    list,
+    unwrap_opt,
+    read_container,
+    write_container,
+};
 
 // Some ease of life utils for section
 #[macro_export]
@@ -19,15 +25,28 @@ macro_rules! unwrap_opt {
 }
 
 #[macro_export]
-macro_rules! cache_field {
-    ($name:ident($this:ident, $logger:ident) -> $type:ty $code:block) => {
-        #[allow(unused_mut)]
-        pub fn $name(&mut self, mut $logger: impl Logger) -> &$type {
-            let $this = self;
-            if $this.$name.is_none() {
-                $this.$name = Some($code);
-            }; $this.$name.as_ref().unwrap()
-        }
+macro_rules! read_container {
+    ($key:ident from $name:ident($container:expr) as $func:ident with $logger:ident) => {{
+        let data = if_err!(($logger) [$name, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
+        if_err!(($logger) [$name, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, stringify!($name), &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        })
+    }}
+}
+
+#[macro_export]
+macro_rules! write_container {
+    (($value:expr) into $name:ident($container:expr) at $key:ident as $func:ident with $logger:ident) => {
+        let data_writer = if_err!(($logger) [$name, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
+        if_err!(($logger) [$name, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
+            Crash => {
+                $logger.error(Log::new(LogType::Fatal, stringify!($name), &format!("{:#?}", err), &[]));
+                $logger.crash()
+            }
+        });
     }
 }
 
@@ -57,13 +76,14 @@ macro_rules! get {
 }
 
 pub struct Entry {
-    pub sections: Box<[Section]>,
-    pub title: String,
-    pub description: String,
-    pub groups: Box<[String]>,
-    pub notes: Box<[String]>,
+    pub container: LazyContainer,
+    pub sections: Option<Box<[Section]>>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub groups: Option<Box<[String]>>,
+    pub notes: Option<Box<[String]>>,
     /// Date goes from `day` to `month` then to `year`
-    pub date: [u16; 3],
+    pub date: Option<[u16; 3]>,
 }
 
 impl Entry {
@@ -107,14 +127,124 @@ impl Entry {
             })
         }
 
-        let this = Self {
-            title,
-            description,
-            date,
-            notes: notes.into_boxed_slice(),
-            groups: groups.into_boxed_slice(),
-            sections: sections.into_boxed_slice(),
+        let mut this = Self {
+            container,
+            title: Some(title),
+            description: Some(description),
+            date: Some(date),
+            notes: Some(notes.into_boxed_slice()),
+            groups: Some(groups.into_boxed_slice()),
+            sections: Some(sections.into_boxed_slice()),
         };
+        this.store_lazy(logger);
+        this.clear_cache();
         this
     }
+
+    pub fn store_lazy(&self, mut logger: impl Logger) {
+        // Only store them if modified
+        if let Some(x) = &self.title { write_container!((x) into Entry(self.container) at title as new_string with logger); }
+        if let Some(x) = &self.description { write_container!((x) into Entry(self.container) at description as new_string with logger); }
+        
+        // The bloody lists & arrays
+        if let Some(x) = &self.notes {
+            list::write(
+                x.as_ref(),
+                |file, data| LazyData::new_string(file, data),
+                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("notes")),
+                logger.hollow()
+            );
+        }
+
+        if let Some(x) = &self.groups {
+            list::write(
+                x.as_ref(),
+                |file, data| LazyData::new_string(file, data),
+                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("groups")),
+                logger.hollow()
+            );
+        }
+
+        if let Some(x) = &self.date {
+            list::write(
+                x.as_ref(),
+                |file, data| LazyData::new_u16(file, *data),
+                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("date")),
+                logger
+            );
+        }
+    }
+
+    pub fn load_lazy(container: LazyContainer) -> Self {
+        Self {
+            title: None,
+            sections: None,
+            description: None,
+            groups: None,
+            notes: None,
+            date: None,
+            container,
+        }
+    }
+
+    pub fn clear_cache(&mut self) {
+        self.title = None;
+        self.sections = None;
+        self.description = None;
+        self.groups = None;
+        self.notes = None;
+        self.date = None;
+    }
+
+    cache_field!(title(this, logger) -> String {
+        read_container!(title from EntrySection(this.container) as collect_string with logger)
+    });
+
+    cache_field!(description(this, logger) -> String {
+        read_container!(title from Entry(this.container) as collect_string with logger)
+    });
+
+    cache_field!(notes(this, logger) -> Box<[String]> {
+        list::read(
+            |data| data.collect_string(),
+            &if_err!((logger) [Entry, err => ("While reading from entry's notes: {err:?}")] retry this.container.read_container("notes")),
+            logger
+        )
+    });
+
+    cache_field!(groups(this, logger) -> Box<[String]> {
+        list::read(
+            |data| data.collect_string(),
+            &if_err!((logger) [Entry, err => ("While reading from entry's groups: {err:?}")] retry this.container.read_container("groups")),
+            logger
+        )
+    });
+
+    cache_field!(date(this, logger) -> [u16; 3] {
+        let array = list::read(
+            |data| data.collect_u16(),
+            &if_err!((logger) [Entry, err => ("While reading from entry's groups: {err:?}")] retry this.container.read_container("groups")),
+            logger
+        ); [array[0], array[1], array[2]]
+    });
+
+    cache_field!(sections(this, logger) -> Box<[Section]> {
+        let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.read_container("sections"));
+        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] retry container.read_data("length"));
+        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u8()} manual {
+            Crash => {
+                logger.error(Log::new(LogType::Fatal, "Entry", &format!("{err:#?}"), &[]));
+                logger.crash()
+            }
+        });
+        let mut sections = Vec::with_capacity(length as usize);
+
+        for i in 0..length {
+            sections.push(Section::load_lazy(
+                if_err!((logger) [Entry, err => ("While reading entry section {i}: {err:?}")] retry container.read_container(i.to_string()))
+            ));
+        }
+
+        sections.into_boxed_slice()
+    });
 }
