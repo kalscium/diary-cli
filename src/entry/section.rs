@@ -92,6 +92,12 @@ impl Section {
         self.notes = None;
     }
 
+    pub fn fill_cache(&mut self, logger: impl Logger) {
+        self.title(logger.hollow());
+        self.content(logger.hollow());
+        self.notes(logger.hollow());
+    }
+
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),

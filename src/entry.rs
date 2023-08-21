@@ -91,7 +91,7 @@ impl Entry {
         let title = get!(title at entry_path from table as as_str with logger).to_string();
         let description = get!(description at entry_path from table as as_str with logger).to_string();
         let raw_notes = get!(notes at entry_path from table as as_array with logger);
-        let raw_groups = get!(notes at entry_path from table as as_array with logger);
+        let raw_groups = get!(groups at entry_path from table as as_array with logger);
         let raw_sections = get!(section at entry_path from table as as_array with logger);
 
         // Get date
@@ -196,6 +196,14 @@ impl Entry {
         self.date = None;
     }
 
+    pub fn fill_cache(&mut self, logger: impl Logger) {
+        self.title(logger.hollow());
+        self.sections(logger.hollow());
+        self.groups(logger.hollow());
+        self.notes(logger.hollow());
+        self.date(logger.hollow());
+    }
+
     cache_field!(title(this, logger) -> String {
         read_container!(title from EntrySection(this.container) as collect_string with logger)
     });
@@ -223,7 +231,7 @@ impl Entry {
     cache_field!(date(this, logger) -> [u16; 3] {
         let array = list::read(
             |data| data.collect_u16(),
-            &if_err!((logger) [Entry, err => ("While reading from entry's groups: {err:?}")] retry this.container.read_container("groups")),
+            &if_err!((logger) [Entry, err => ("While reading from entry's date: {err:?}")] retry this.container.read_container("date")),
             logger
         ); [array[0], array[1], array[2]]
     });
