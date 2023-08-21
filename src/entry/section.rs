@@ -24,11 +24,15 @@ pub struct Section {
 
 impl Section {
     pub fn new(table: &Table, container: LazyContainer, entry: &str, idx: u8, mut logger: impl Logger) -> Self {
+        log!((logger) EntrySection("Parsing entry '{entry}'s section {idx}..."));
+
         // Get the basic needed data
+        log!((logger) EntrySection("Reading section's data..."));
         let title = get!(title at (entry, idx) from table as as_str with logger).to_string();
         let path = get!(path at (entry, idx) from table as as_str with logger).to_string();
         let raw_notes = get!(notes at (entry, idx) from table as as_array with logger);
 
+        log!((logger) EntrySection("Checking if path specified in the section is valid..."));
         // Check if path exists
         if !Path::new(&path).exists() {
             logger.error(Log::new(LogType::Fatal, "EntrySection", &format!("Path '{path}' specified in entry '{entry}', section {idx} does not exist"), &[]));
@@ -38,6 +42,7 @@ impl Section {
         let content = if_err!((logger) [EntrySection, err => ("While reading entry '{entry}', section {idx}'s path contents: {err:?}")] retry fs::read_to_string(&path));
 
         // Parse notes
+        log!((logger) EntrySection("Parsing section's notes"));
         let mut notes = Vec::with_capacity(raw_notes.len());
         for i in raw_notes {
             notes.push(
@@ -50,7 +55,9 @@ impl Section {
                 }
             )
         };
-        
+
+        log!((logger) EntrySection("Writing entry '{entry}'s section {idx} into database..."));
+        log!((logger) EntrySection("(failure to do so may corrupt database!)"));
         let mut this = Self {
             container,
             title: Some(title),
@@ -58,8 +65,9 @@ impl Section {
             notes: Some(notes.into_boxed_slice()),
         };
 
-        this.store_lazy(logger);
+        this.store_lazy(logger.hollow());
         this.clear_cache();
+        log!((logger) EntrySection("Successfully parsed and written entry's section {idx} into database"));
         this
     }
 

@@ -88,6 +88,8 @@ pub struct Entry {
 
 impl Entry {
     pub fn new(table: Table, entry_path: &str, container: LazyContainer, mut logger: impl Logger) -> Self {
+        log!((logger) Entry("Reading entry '{entry_path}'s raw unchecked data..."));
+
         let entry_table = get!(entry at entry_path from table as as_table with logger); // For nice entry nesting
 
         let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
@@ -97,6 +99,7 @@ impl Entry {
         let raw_sections = get!(section at entry_path from table as as_array with logger);
 
         // Get date
+        log!((logger) Entry("Parsing date..."));
         let date: toml::value::Date = unwrap_opt!(
             (get!(date at entry_path from entry_table as as_datetime with logger).date)
             with logger,
@@ -104,6 +107,7 @@ impl Entry {
         ); let date = [ date.day as u16, date.month as u16, date.year ];
 
         // Parse simple arrays
+        log!((logger) Entry("Parsing notes & groups..."));
         unpack_array!(notes from raw_notes with logger by x
             => unwrap_opt!((x.as_str()) with logger, format: Entry("All notes in entry '{entry_path}' must be strings")).to_string()
         );
@@ -113,6 +117,7 @@ impl Entry {
         );
 
         // Parse sections
+        log!((logger) Entry("Parsing entry's sections..."));
         let list = if_err!((logger) [Entry, err => ("While initialising sections: {err:?}")] retry container.new_container("sections"));
         unpack_array!(sections from raw_sections with logger by (i, x) => {
             let container = if_err!((logger) [Entry, err => ("While initialising section {i}: {err:?}")] retry list.new_container(i.to_string()));
@@ -129,6 +134,9 @@ impl Entry {
             })
         }
 
+        log!((logger) Entry("Storing entry's parsed and checked data into database..."));
+        log!((logger) Entry("(if this fails, this may leave your database (diary) in a corrupted state!)"));
+
         let mut this = Self {
             container,
             title: Some(title),
@@ -138,7 +146,8 @@ impl Entry {
             groups: Some(groups.into_boxed_slice()),
             sections: Some(sections.into_boxed_slice()),
         };
-        this.store_lazy(logger);
+        this.store_lazy(logger.hollow());
+        log!((logger) Entry("Successfully written entry into database"));
         this.clear_cache();
         this
     }
