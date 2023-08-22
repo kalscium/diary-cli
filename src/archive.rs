@@ -40,4 +40,27 @@ impl Archive {
             itver,
         }
     }
+
+    pub fn load(mut logger: impl Logger) -> Self {
+        let path = home_dir().join("archive");
+        let path_string = path.to_string_lossy();
+        log!((logger) Archive("Loading archive '{path_string}'..."));
+
+        // Checks if path exists or not
+        if !path.exists() {
+            log!((logger.error) Archive("Archive '{path_string}' not found; initialising a new one...") as Inconvenience);
+            return Self::init(logger)
+        };
+
+        let database = if_err!((logger) [Archive, err => ("While loading archive '{path_string}': {err:?}")] retry LazyDB::load_dir(&path));
+        log!((logger) Archive("Loading uid and itver of archive..."));
+        let uid = if_err!((logger) [Archive, err => ("While loading archive uid: {err:?}")] retry (|| search_database!((&database) uid)?.collect_u64())());
+        let itver = if_err!((logger) [Archive, err => ("While loading archive itver: {err:?}")] retry (|| search_database!((&database) itver)?.collect_u16())());
+
+        Self {
+            database,
+            uid,
+            itver,
+        }
+    }
 }
