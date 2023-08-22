@@ -42,12 +42,14 @@ impl Archive {
         }
     }
 
+    /// Loads an archive at the cli's home
     #[inline]
     pub fn load(logger: impl Logger) -> Self {
         let path = home_dir().join("archive");
         Self::load_dir(path, logger)
     }
 
+    /// Loads an archive at a specified path
     pub fn load_dir(path: PathBuf, mut logger: impl Logger) -> Self {
         let path_string = path.to_string_lossy();
         log!((logger) Archive("Loading archive '{path_string}'..."));
@@ -70,6 +72,7 @@ impl Archive {
         }
     }
 
+    /// Backs up home archive to specified path
     pub fn backup(out_path: PathBuf, mut logger: impl Logger) {
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
@@ -82,6 +85,7 @@ impl Archive {
         log!((logger) Archive(""));
     }
 
+    /// Loads a backup if that backup is the same as the active archive and or newer than the active archive, otherwise errors will be thrown
     pub fn load_backup(path: PathBuf, mut logger: impl Logger) -> Self {
         let archive = home_dir().join("archive");
         let archive_string = archive.to_string_lossy();
@@ -123,4 +127,6 @@ impl Archive {
         if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(&path, &archive));
         Self::load(logger)
     }
+
+
 }
