@@ -35,7 +35,7 @@ impl Section {
         log!((logger) Section("Checking if path specified in the section is valid..."));
         // Check if path exists
         if !Path::new(&path).exists() {
-            logger.error(Log::new(LogType::Fatal, "Section", &format!("Path '{path}' specified in entry '{entry}', section {idx} does not exist"), &[]));
+            log!((logger.error) Section("Path '{path}' specified in entry '{entry}', section {idx} does not exist") as Fatal);
             return logger.crash();
         };
 
@@ -49,7 +49,7 @@ impl Section {
                 match i.as_str() {
                     Some(x) => x.to_string(),
                     None => {
-                        logger.error(Log::new(LogType::Fatal, "Section", &format!("All notes in entry '{entry}', section {idx} must be strings"), &[]));
+                        log!((logger.error) Section("All notes in entry '{entry}', section '{idx}' must be strings") as Fatal);
                         logger.crash()
                     }
                 }

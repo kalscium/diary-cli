@@ -17,7 +17,7 @@ macro_rules! unwrap_opt {
         match $opt {
             Some(x) => x,
             None => {
-                $logger.error(Log::new(LogType::Fatal, stringify!($origin), &format!$error, &[]));
+                log!(($logger.error) $origin$error as Fatal);
                 $logger.crash()
             }
         }
