@@ -1,6 +1,7 @@
 use lazy_db::*;
 use crate::home_dir;
 use soulog::*;
+use std::path::PathBuf;
 
 pub struct Archive {
     database: LazyDB,
@@ -62,5 +63,17 @@ impl Archive {
             uid,
             itver,
         }
+    }
+
+    pub fn backup(out_path: PathBuf, mut logger: impl Logger) {
+        let path = home_dir().join("archive");
+        let path_string = path.to_string_lossy();
+        let out_string = out_path.to_string_lossy();
+        
+        log!((logger) Archive("Backing up archive '{path_string}' as '{out_string}'..."));
+        let database = if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
+        if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry database.compile(&out_path));
+        log!((logger) Archive("Successfully backed up archive '{path_string}' as '{out_string}'"));
+        log!((logger) Archive(""));
     }
 }
