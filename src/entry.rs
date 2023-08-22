@@ -118,7 +118,7 @@ impl Entry {
             let table = unwrap_opt!((x.as_table()) with logger, format: Entry("Entry '{entry_path}', section {i} must be a toml table"));
             Section::new(table, container, entry_path, i as u8, logger.hollow()) // Write into that container
         });
-        if_err!((logger) [Entry, err => ("While writing section list length: {err:?}")] retry write_container!((list) length = new_u8(raw_sections.len() as u8)));
+        if_err!((logger) [Entry, err => ("While writing section list length: {err:?}")] retry write_container!((list) length = new_u16(raw_sections.len() as u16)));
 
         log!((logger) Entry("Storing entry's parsed and checked data into archive..."));
         log!((logger) Entry("(if this fails, this may leave your archive (diary) in a corrupted state!)"));
@@ -238,7 +238,7 @@ impl Entry {
     cache_field!(sections(this, logger) -> Box<[Section]> {
         let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.read_container("sections"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] retry container.read_data("length"));
-        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u8()} manual {
+        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u16()} manual {
             Crash => {
                 logger.error(Log::new(LogType::Fatal, "Entry", &format!("{err:#?}"), &[]));
                 logger.crash()
