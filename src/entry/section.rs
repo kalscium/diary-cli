@@ -56,8 +56,8 @@ impl Section {
             )
         };
 
-        log!((logger) Section("Writing entry '{entry}'s section {idx} into database..."));
-        log!((logger) Section("(failure to do so may corrupt database!)"));
+        log!((logger) Section("Writing entry '{entry}'s section {idx} into archive..."));
+        log!((logger) Section("(failure to do so may corrupt archive!)"));
         let mut this = Self {
             container,
             title: Some(title),
@@ -67,20 +67,20 @@ impl Section {
 
         this.store_lazy(logger.hollow());
         this.clear_cache();
-        log!((logger) Section("Successfully parsed and written entry's section {idx} into database"));
+        log!((logger) Section("Successfully parsed and written entry's section {idx} into archive"));
         log!((logger) Section("")); // spacer
         this
     }
 
     pub fn store_lazy(&self, mut logger: impl Logger) {
         // Only store them if they are accessed (maybe modified)
-        if let Some(x) = &self.title { write_container!((x) into Section(self.container) at title as new_string with logger); }
-        if let Some(x) = &self.content { write_container!((x) into Section(self.container) at path as new_string with logger); }
+        if let Some(x) = &self.title { write_db_container!(Section(self.container) title = new_string(x) with logger); }
+        if let Some(x) = &self.content { write_db_container!(Section(self.container) content = new_string(x) with logger); }
         if let Some(x) = &self.notes {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [Section, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("notes")),
+                &if_err!((logger) [Section, err => ("While writing section to archive: {:?}", err)] retry self.container.new_container("notes")),
                 logger
             );
         }
@@ -116,11 +116,11 @@ impl Section {
     });
 
     cache_field!(title(this, logger) -> String {
-        read_container!(title from Section(this.container) as collect_string with logger)
+        read_db_container!(title from Section(this.container) as collect_string with logger)
     });
 
     cache_field!(content(this, logger) -> String {
-        read_container!(path from Section(this.container) as collect_string with logger)
+        read_db_container!(path from Section(this.container) as collect_string with logger)
     });
 }
 

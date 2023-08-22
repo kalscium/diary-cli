@@ -6,8 +6,8 @@ use lazy_db::*;
 pub use crate::{
     list,
     unwrap_opt,
-    read_container,
-    write_container,
+    read_db_container,
+    write_db_container,
 };
 
 // Some ease of life utils for section
@@ -25,10 +25,10 @@ macro_rules! unwrap_opt {
 }
 
 #[macro_export]
-macro_rules! read_container {
+macro_rules! read_db_container {
     ($key:ident from $name:ident($container:expr) as $func:ident with $logger:ident) => {{
-        let data = if_err!(($logger) [$name, err => ("While reading from database: {:?}", err)] retry $container.read_data(stringify!($key)));
-        if_err!(($logger) [$name, err => ("While reading from database: {:?}", err)] {data.$func()} manual {
+        let data = if_err!(($logger) [$name, err => ("While reading from archive: {:?}", err)] retry $container.read_data(stringify!($key)));
+        if_err!(($logger) [$name, err => ("While reading from archive: {:?}", err)] {data.$func()} manual {
             Crash => {
                 $logger.error(Log::new(LogType::Fatal, stringify!($name), &format!("{:#?}", err), &[]));
                 $logger.crash()
@@ -38,15 +38,9 @@ macro_rules! read_container {
 }
 
 #[macro_export]
-macro_rules! write_container {
-    (($value:expr) into $name:ident($container:expr) at $key:ident as $func:ident with $logger:ident) => {
-        let data_writer = if_err!(($logger) [$name, err => ("While writing to database: {:?}", err)] retry $container.data_writer(stringify!($key)));
-        if_err!(($logger) [$name, err => ("While writing to database: {:?}", err)] {LazyData::$func(data_writer, $value)} manual {
-            Crash => {
-                $logger.error(Log::new(LogType::Fatal, stringify!($name), &format!("{:#?}", err), &[]));
-                $logger.crash()
-            }
-        });
+macro_rules! write_db_container {
+    ($name:ident($container:expr) $key:ident = $func:ident($value:expr) with $logger:ident) => {
+        if_err!(($logger) [$name, err => ("While writing to archive: {err:?}")] retry write_container!(($container) $key = $func($value)));
     }
 }
 
@@ -124,18 +118,10 @@ impl Entry {
             let table = unwrap_opt!((x.as_table()) with logger, format: Entry("Entry '{entry_path}', section {i} must be a toml table"));
             Section::new(table, container, entry_path, i as u8, logger.hollow()) // Write into that container
         });
-        { // For cleaner context
-            let writer = if_err!((logger) [Entry, err => ("While writing list length: {err:?}")] retry list.data_writer("length"));
-            if_err!((logger) [Entry, err => ("While writing list length: {err:?}")] {LazyData::new_u8(writer, raw_sections.len() as u8)} manual {
-                Crash => {
-                    logger.error(Log::new(LogType::Fatal, "Entry", &format!("{err:#?}"), &[]));
-                    logger.crash()
-                }
-            })
-        }
+        if_err!((logger) [Entry, err => ("While writing section list length: {err:?}")] retry write_container!((list) length = new_u8(raw_sections.len() as u8)));
 
-        log!((logger) Entry("Storing entry's parsed and checked data into database..."));
-        log!((logger) Entry("(if this fails, this may leave your database (diary) in a corrupted state!)"));
+        log!((logger) Entry("Storing entry's parsed and checked data into archive..."));
+        log!((logger) Entry("(if this fails, this may leave your archive (diary) in a corrupted state!)"));
 
         let mut this = Self {
             container,
@@ -147,23 +133,24 @@ impl Entry {
             sections: Some(sections.into_boxed_slice()),
         };
         this.store_lazy(logger.hollow());
-        log!((logger) Entry("Successfully written entry into database"));
+        log!((logger) Entry("Successfully written entry into archive"));
         log!((logger) Entry("")); // spacer
         this.clear_cache();
         this
     }
 
     pub fn store_lazy(&self, mut logger: impl Logger) {
+        log!((logger) Entry("Storing entry into archive..."));
         // Only store them if modified
-        if let Some(x) = &self.title { write_container!((x) into Entry(self.container) at title as new_string with logger); }
-        if let Some(x) = &self.description { write_container!((x) into Entry(self.container) at description as new_string with logger); }
+        if let Some(x) = &self.title { write_db_container!(Entry(self.container) title = new_string(x) with logger); }
+        if let Some(x) = &self.description { write_db_container!(Entry(self.container) description = new_string(x) with logger); }
         
         // The bloody lists & arrays
         if let Some(x) = &self.notes {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("notes")),
+                &if_err!((logger) [Entry, err => ("While writing notes to archive: {:?}", err)] retry self.container.new_container("notes")),
                 logger.hollow()
             );
         }
@@ -172,7 +159,7 @@ impl Entry {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("groups")),
+                &if_err!((logger) [Entry, err => ("While writing groups to archive: {:?}", err)] retry self.container.new_container("groups")),
                 logger.hollow()
             );
         }
@@ -181,7 +168,7 @@ impl Entry {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_u16(file, *data),
-                &if_err!((logger) [EntrySection, err => ("While writing section to database: {:?}", err)] retry self.container.new_container("date")),
+                &if_err!((logger) [Entry, err => ("While writing date to archive: {:?}", err)] retry self.container.new_container("date")),
                 logger
             );
         }
@@ -217,11 +204,11 @@ impl Entry {
     }
 
     cache_field!(title(this, logger) -> String {
-        read_container!(title from EntrySection(this.container) as collect_string with logger)
+        read_db_container!(title from EntrySection(this.container) as collect_string with logger)
     });
 
     cache_field!(description(this, logger) -> String {
-        read_container!(title from Entry(this.container) as collect_string with logger)
+        read_db_container!(title from Entry(this.container) as collect_string with logger)
     });
 
     cache_field!(notes(this, logger) -> Box<[String]> {
