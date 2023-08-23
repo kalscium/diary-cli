@@ -1,4 +1,7 @@
 use clap::*;
+use crate::archive::Archive;
+use crate::logger::DiaryLogger;
+use soulog::*;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -10,13 +13,18 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     Test,
+    Init,
+    Wipe,
 }
 
 impl Commands {
     pub fn execute(&self) {
         use Commands::*;
+        let logger = DiaryLogger::new();
         match self {
-            Test => println!("Hello, world!")
+            Test => println!("Hello, world!"),
+            Init => {Archive::init(logger.hollow());},
+            Wipe => Archive::load(logger.hollow()).wipe(logger.hollow()),
         }
     }
 }
