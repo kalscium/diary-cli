@@ -1,7 +1,8 @@
 use lazy_db::*;
-use crate::home_dir;
+use crate::{home_dir, unwrap_opt};
 use soulog::*;
 use std::path::PathBuf;
+use crate::entry::Entry;
 
 pub struct Archive {
     database: LazyDB,
@@ -152,5 +153,39 @@ impl Archive {
         // Wipe archive
         if_err!((logger) [Archive, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
         log!((logger) Archive("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
+    }
+
+    pub fn commit(&self, entry: PathBuf, mut logger: impl Logger) {
+        let path = home_dir().join("archive");
+        let path_string = path.to_string_lossy();
+
+        // Checks if path exists or not
+        if !path.is_dir() {
+            log!((logger.error) Archive("Archive '{path_string}' doesn't exist! Run `diary-cli init` before you can commit") as Fatal);
+            return logger.crash();
+        }
+
+        // Check if entry path exists or not
+        let entry_string = entry.to_string_lossy();
+        if !entry.is_file() {
+            log!((logger.error) Archive("Entry config file '{entry_string}' doesn't exist") as Fatal);
+            return logger.crash();
+        }
+
+        // Parse toml
+        log!((logger) Archive("Parsing toml at '{}'", entry.to_string_lossy()));
+        let entry = if_err!((logger) [Archive, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(&entry));
+        let entry = if_err!((logger) [Archive, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
+            Crash => {
+                log!((logger) Archive("{err:#?}") as Fatal);
+                logger.crash()
+            }
+        });
+
+        // Construct entry
+        let container = if_err!((logger) [Archive, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
+        Entry::new(entry, &entry_string, container, logger.hollow());
+
+        log!((logger) Archive("Successfully commited entry to archive"));
     }
 }
