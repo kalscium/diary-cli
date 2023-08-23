@@ -128,10 +128,11 @@ impl Archive {
         Self::load(logger)
     }
 
+    /// Wipes the specified archive and asks the user for confirmation
     pub fn wipe(self, mut logger: impl Logger) {
         // Confirm with the user about the action
         let expected = "I, as the user, confirm that I fully understand that I am wiping my ENTIRE archive and that this action is permanent and irreversible";
-        log!((logger) Archive("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below:"));
+        log!((logger) Archive("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):"));
         if_err!((logger) [Archive, err => ("Entered phrase incorrect, please retry")] retry {
             log!((logger) Archive("\"{expected}\""));
             let input = logger.ask("Archive", "Enter the phrase");
