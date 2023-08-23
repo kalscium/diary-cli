@@ -15,7 +15,7 @@ impl Archive {
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
         // Check if archive already exists
-        if !path.exists() {
+        if path.exists() {
             log!((logger.error) Archive("Archive '{path_string}' already exists, try wiping it before initialising again") as Fatal);
             return logger.crash()
         }
@@ -128,5 +128,28 @@ impl Archive {
         Self::load(logger)
     }
 
+    pub fn wipe(self, mut logger: impl Logger) {
+        // Confirm with the user about the action
+        let expected = "I, as the user, confirm that I fully understand that I am wiping my ENTIRE archive and that this action is permanent and irreversible";
+        log!((logger) Archive("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below:"));
+        if_err!((logger) [Archive, err => ("Entered phrase incorrect, please retry")] retry {
+            log!((logger) Archive("\"{expected}\""));
+            let input = logger.ask("Archive", "Enter the phrase");
+            if &input[0..input.len() - 1] != expected { Err(()) }
+            else { Ok(()) }
+        });
 
+        log!((logger) Archive("Wiping archive..."));
+
+        let path = home_dir().join("archive");
+        // Check if path exists
+        if !path.exists() {
+            log!((logger.error) Archive("Archive '{}' doesn't exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            return;
+        }
+
+        // Wipe archive
+        if_err!((logger) [Archive, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
+        log!((logger) Archive("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
+    }
 }
