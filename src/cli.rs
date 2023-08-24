@@ -1,5 +1,6 @@
 use clap::*;
 use crate::archive::Archive;
+use crate::home_dir;
 use crate::logger::DiaryLogger;
 use soulog::*;
 
@@ -20,8 +21,8 @@ pub enum Commands {
     Wipe,
     #[command(about="Commit an entry into the archive")]
     Commit {
-        #[arg(index=1, required=true, help="The path to the entry config toml file to commit.")]
-        file_path: String,
+        #[arg(short, long, required=false, help="Specifies the path the backup will be placed")]
+        file_path: Option<String>,
     },
     #[command(about="Backs up the arhive")]
     Backup {
@@ -32,7 +33,9 @@ pub enum Commands {
     Load {
         #[arg(index=1, required=true, help="The path of the backup file you want to load.")]
         file_path: String,
-    }
+    },
+    #[command(about="Rolls back to the last backed up archive")]
+    Rollback,
 }
 
 impl Commands {
@@ -41,11 +44,17 @@ impl Commands {
         let logger = DiaryLogger::new();
         match self {
             Test => println!("Hello, world!"),
-            Init => {Archive::init(logger.hollow());},
-            Wipe => Archive::load(logger.hollow()).wipe(logger.hollow()),
-            Commit { file_path } => Archive::load(logger.hollow()).commit(file_path, logger.hollow()),
-            Backup { out_path } => Archive::backup(out_path, logger.hollow()),
-            Load { file_path } => Archive::load_backup(file_path, logger.hollow()),
+            Init => {Archive::init(logger);},
+            Wipe => Archive::load(logger.hollow()).wipe(logger),
+            Backup { out_path } => Archive::backup(out_path, logger),
+            Load { file_path } => Archive::load_backup(file_path, logger),
+            Rollback => Archive::rollback(logger),
+            Commit { file_path } => {
+                match file_path {
+                    Some(path) => Archive::load(logger.hollow()).commit(path, logger),
+                    None => Archive::load(logger.hollow()).commit(home_dir().join("backup.ldb"), logger),
+                }
+            }
         }
     }
 }

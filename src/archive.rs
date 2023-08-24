@@ -77,6 +77,18 @@ impl Archive {
         }
     }
 
+    /// Rolls back to last backup
+    pub fn rollback(mut logger: impl Logger) {
+        log!((logger) RollBack("Rolling back to last backup..."));
+        println!("{}", colour_format![yellow("Warning"), blue(": "), none("Rollback cannot rollback successful commits, only unsuccessful ones that corrupt the archive.")]);
+        let path = home_dir().join("backup.ldb");
+        if !path.exists() {
+            log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
+            return logger.crash();
+        } Self::load_backup(path, logger.hollow());
+        log!((logger) RollBack("Successfully rolled back to last backup"));
+    }
+
     /// Backs up home archive to specified path
     pub fn backup(out_path: impl AsRef<Path>, mut logger: impl Logger) {
         let out_path = out_path.as_ref();
@@ -84,11 +96,11 @@ impl Archive {
         let path_string = path.to_string_lossy();
         let out_string = out_path.to_string_lossy();
         
-        log!((logger) Archive("Backing up archive '{path_string}' as '{out_string}'..."));
+        log!((logger) Backup("Backing up archive '{path_string}' as '{out_string}'..."));
         let database = if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
         if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
-        log!((logger) Archive("Successfully backed up archive '{path_string}' as '{out_string}'"));
-        log!((logger) Archive(""));
+        log!((logger) Backup("Successfully backed up archive '{path_string}' as '{out_string}'"));
+        log!((logger) Backup(""));
     }
 
     /// Loads a backup if that backup is the same as the active archive and or newer than the active archive, otherwise errors will be thrown
@@ -98,17 +110,17 @@ impl Archive {
         let archive_string = archive.to_string_lossy();
         let path_string = path.to_string_lossy();
 
-        log!((logger) Archive("Loading archive backup '{path_string}'..."));
+        log!((logger) Backup("Loading archive backup '{path_string}'..."));
 
         // Check if backup exists
         if !path.is_file() {
-            log!((logger.error) Archive("Backup file '{path_string}' does not exist") as Fatal);
+            log!((logger.error) Backup("Backup file '{path_string}' does not exist") as Fatal);
             return logger.crash();
         }
 
         // Check if archive already exists
         if archive.is_dir() {
-            log!((logger) Archive("Detected that there is already a loaded archive at '{archive_string}'"));
+            log!((logger) Backup("Detected that there is already a loaded archive at '{archive_string}'"));
             let old = Archive::load(logger.hollow()); // Loads old archive
 
             // Load new archive
@@ -120,12 +132,12 @@ impl Archive {
 
             // Check if uid is the same and that the itver is higher
             if new.uid != old.uid {
-                log!((logger.error) Archive("Cannot load backup as it is a backup of a different archive (uids don't match)") as Fatal);
+                log!((logger.error) Backup("Cannot load backup as it is a backup of a different archive (uids don't match)") as Fatal);
                 return logger.crash();
             }
 
             if old.itver >= new.itver {
-                log!((logger.error) Archive("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
+                log!((logger.error) Backup("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
                 return logger.crash();
             }
             
@@ -133,33 +145,33 @@ impl Archive {
         }
 
         if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &archive));
-        log!((logger) Archive("Successfully loaded backup '{path_string}'"));
+        log!((logger) Backup("Successfully loaded backup '{path_string}'"));
     }
 
     /// Wipes the specified archive and asks the user for confirmation
     pub fn wipe(self, mut logger: impl Logger) {
         // Confirm with the user about the action
         let expected = "I, as the user, confirm that I fully understand that I am wiping my ENTIRE archive and that this action is permanent and irreversible";
-        log!((logger) Archive("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):"));
+        log!((logger) Wipe("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):"));
         if_err!((logger) [Archive, err => ("Entered phrase incorrect, please retry")] retry {
-            log!((logger) Archive("\"{expected}\""));
+            log!((logger) Wipe("\"{expected}\""));
             let input = logger.ask("Archive", "Enter the phrase");
             if &input[0..input.len() - 1] != expected { Err(()) }
             else { Ok(()) }
         });
 
-        log!((logger) Archive("Wiping archive..."));
+        log!((logger) Wipe("Wiping archive..."));
 
         let path = home_dir().join("archive");
         // Check if path exists
         if !path.exists() {
-            log!((logger.error) Archive("Archive '{}' doesn't exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            log!((logger.error) Wipe("Archive '{}' doesn't exist; doing nothing", path.to_string_lossy()) as Inconvenience);
             return;
         }
 
         // Wipe archive
         if_err!((logger) [Archive, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
-        log!((logger) Archive("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
+        log!((logger) Wipe("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
     }
 
     pub fn commit(&self, entry: impl AsRef<Path>, mut logger: impl Logger) {
@@ -169,23 +181,27 @@ impl Archive {
 
         // Checks if path exists or not
         if !path.is_dir() {
-            log!((logger.error) Archive("Archive '{path_string}' doesn't exist! Run `diary-cli init` before you can commit") as Fatal);
+            log!((logger.error) Commit("Archive '{path_string}' doesn't exist! Run `diary-cli init` before you can commit") as Fatal);
             return logger.crash();
         }
 
         // Check if entry path exists or not
         let entry_string = entry.to_string_lossy();
         if !entry.is_file() {
-            log!((logger.error) Archive("Entry config file '{entry_string}' doesn't exist") as Fatal);
+            log!((logger.error) Commit("Entry config file '{entry_string}' doesn't exist") as Fatal);
             return logger.crash();
         }
+        
+        // Backup archive before modification
+        let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
+        Self::backup(home_dir().join("backup.ldb"), logger.hollow());
 
         // Parse toml
-        log!((logger) Archive("Parsing toml at '{}'", entry.to_string_lossy()));
+        log!((logger) Commit("Parsing toml at '{}'", entry.to_string_lossy()));
         let entry = if_err!((logger) [Archive, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
         let entry = if_err!((logger) [Archive, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
             Crash => {
-                log!((logger) Archive("{err:#?}") as Fatal);
+                log!((logger) Commit("{err:#?}") as Fatal);
                 logger.crash()
             }
         });
@@ -194,6 +210,10 @@ impl Archive {
         let container = if_err!((logger) [Archive, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
         Entry::new(entry, &entry_string, container, logger.hollow());
 
-        log!((logger) Archive("Successfully commited entry to archive"));
+        // Backup to not rollback commit
+        let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
+        Self::backup(home_dir().join("backup.ldb"), logger.hollow());
+
+        log!((logger) Commit("Successfully commited entry to archive"));
     }
 }
