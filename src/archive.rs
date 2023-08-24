@@ -116,6 +116,8 @@ impl Archive {
             if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &new));
             let new = Archive::load_dir(new, logger.hollow());
 
+            let _ = std::fs::remove_dir_all(new.database.path()); // cleanup
+
             // Check if uid is the same and that the itver is higher
             if new.uid != old.uid {
                 log!((logger.error) Archive("Cannot load backup as it is a backup of a different archive (uids don't match)") as Fatal);
@@ -127,7 +129,6 @@ impl Archive {
                 return logger.crash();
             }
             
-            let _ = std::fs::remove_dir_all(new.database.path()); // cleanup
             let _ = std::fs::remove_dir_all(&archive); // cleanup
         }
 
