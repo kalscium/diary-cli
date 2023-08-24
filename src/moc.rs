@@ -98,11 +98,9 @@ impl MOC {
     cache_field!(collections(this, logger) -> Box<[Collection]> {
         let container = if_err!((logger) [MOC, err => ("While reading from moc's collections: {err:?}")] retry this.container.read_container("collections"));
         let length = if_err!((logger) [MOC, err => ("While reading from moc's collections' length: {err:?}")] retry container.read_data("length"));
-        let length = if_err!((logger) [MOC, err => ("While reading from moc's collections' length: {err:?}")] {length.collect_u16()} manual {
-            Crash => {
-                logger.error(Log::new(LogType::Fatal, "MOC", &format!("{err:#?}"), &[]));
-                logger.crash()
-            }
+        let length = if_err!((logger) [MOC, err => ("While reading from moc's collections' length: {err:?}")] {length.collect_u16()} crash {
+            log!((logger) MOC("{err:#?}") as Fatal);
+            logger.crash()
         });
         let mut colletions = Vec::with_capacity(length as usize);
 

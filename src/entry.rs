@@ -29,11 +29,9 @@ macro_rules! unwrap_opt {
 macro_rules! read_db_container {
     ($key:ident from $name:ident($container:expr) as $func:ident with $logger:ident) => {{
         let data = if_err!(($logger) [$name, err => ("While reading from archive: {:?}", err)] retry $container.read_data(stringify!($key)));
-        if_err!(($logger) [$name, err => ("While reading from archive: {:?}", err)] {data.$func()} manual {
-            Crash => {
-                $logger.error(Log::new(LogType::Fatal, stringify!($name), &format!("{:#?}", err), &[]));
-                $logger.crash()
-            }
+        if_err!(($logger) [$name, err => ("While reading from archive: {:?}", err)] {data.$func()} crash {
+            log!(($logger.error) $name("{err:#?}") as Fatal);
+            $logger.crash()
         })
     }}
 }
@@ -238,14 +236,11 @@ impl Entry {
     });
 
     cache_field!(sections(this, logger) -> Box<[Section]> {
-        let length = search_container!((this.container) /sections::length);
         let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.read_container("sections"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] retry container.read_data("length"));
-        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u16()} manual {
-            Crash => {
-                logger.error(Log::new(LogType::Fatal, "Entry", &format!("{err:#?}"), &[]));
-                logger.crash()
-            }
+        let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u16()} crash {
+            log!((logger) Entry("{err:#?}") as Fatal);
+            logger.crash()
         });
         let mut sections = Vec::with_capacity(length as usize);
 

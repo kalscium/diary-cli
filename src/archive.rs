@@ -205,11 +205,9 @@ impl Archive {
         // Parse toml
         log!((logger) Commit("Parsing toml at '{}'", entry.to_string_lossy()));
         let entry = if_err!((logger) [Commit, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
-        let entry = if_err!((logger) [Commit, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
-            Crash => {
-                log!((logger) Commit("{err:#?}") as Fatal);
-                logger.crash()
-            }
+        let entry = if_err!((logger) [Commit, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} crash {
+            log!((logger) Commit("{err:#?}") as Fatal);
+            logger.crash()
         });
 
         // Construct entry
