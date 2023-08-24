@@ -17,3 +17,9 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+
+# custom for diary-cli
+
+diary-cli
+backup.ldb
