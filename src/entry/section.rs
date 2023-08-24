@@ -80,7 +80,7 @@ impl Section {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [Section, err => ("While writing section to archive: {:?}", err)] retry self.container.new_container("notes")),
+                &if_err!((logger) [Section, err => ("While writing section's notes to archive: {:?}", err)] retry self.container.new_container("notes")),
                 logger
             );
         }
@@ -110,7 +110,7 @@ impl Section {
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Section, err => ("While reading from section notes: {err:?}")] retry this.container.read_container("notes")),
+            &if_err!((logger) [Section, err => ("While reading from section's notes: {err:?}")] retry this.container.read_container("notes")),
             logger
         )
     });

@@ -3,6 +3,7 @@ pub mod logger;
 pub mod list;
 pub mod entry;
 pub mod archive;
+pub mod moc;
 pub use logger::*;
 
 pub fn home_dir() -> std::path::PathBuf {
