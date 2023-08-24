@@ -18,12 +18,12 @@ impl Archive {
         let path_string = path.to_string_lossy();
         // Check if archive already exists
         if path.exists() {
-            log!((logger.error) Archive("Archive '{path_string}' already exists, try wiping it before initialising again") as Fatal);
+            log!((logger.error) Init("Archive '{path_string}' already exists, try wiping it before initialising again") as Fatal);
             return logger.crash()
         }
 
-        log!((logger) Archive("Initialising a new archive at '{path_string}'..."));
-        let database = if_err!((logger) [Archive, err => ("While initialising database: {err:?}")] retry LazyDB::init(&path));
+        log!((logger) Init("Initialising a new archive at '{path_string}'..."));
+        let database = if_err!((logger) [Init, err => ("While initialising database: {err:?}")] retry LazyDB::init(&path));
         
         let uid = {
             use std::collections::hash_map::RandomState;
@@ -32,11 +32,11 @@ impl Archive {
         };
         let itver = 0u16;
 
-        log!((logger) Archive("Writing uid and itver to archive..."));
-        if_err!((logger) [Archive, err => ("While writing uid: {err:?}")] retry write_database!((&database) uid = new_u64(uid)));
-        if_err!((logger) [Archive, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
+        log!((logger) Init("Writing uid and itver to archive..."));
+        if_err!((logger) [Init, err => ("While writing uid: {err:?}")] retry write_database!((&database) uid = new_u64(uid)));
+        if_err!((logger) [Init, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
 
-        log!((logger) Archive("Successfully initialised archive '{path_string}'"));
+        log!((logger) Init("Successfully initialised archive '{path_string}'"));
         Self {
             database,
             uid,
@@ -80,7 +80,7 @@ impl Archive {
     /// Rolls back to last backup
     pub fn rollback(mut logger: impl Logger) {
         log!((logger) RollBack("Rolling back to last backup..."));
-        println!("{}", colour_format![yellow("Warning"), blue(": "), none("Rollback cannot rollback successful commits, only unsuccessful ones that corrupt the archive.")]);
+        println!("{}", colour_format![yellow("Warning"), blue(": "), none("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.")]);
         let path = home_dir().join("backup.ldb");
         if !path.exists() {
             log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
@@ -97,8 +97,8 @@ impl Archive {
         let out_string = out_path.to_string_lossy();
         
         log!((logger) Backup("Backing up archive '{path_string}' as '{out_string}'..."));
-        let database = if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
-        if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
+        let database = if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
+        if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
         log!((logger) Backup("Successfully backed up archive '{path_string}' as '{out_string}'"));
         log!((logger) Backup(""));
     }
@@ -125,7 +125,7 @@ impl Archive {
 
             // Load new archive
             let new = home_dir().join("new");
-            if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &new));
+            if_err!((logger) [Backup, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &new));
             let new = Archive::load_dir(new, logger.hollow());
 
             let _ = std::fs::remove_dir_all(new.database.path()); // cleanup
@@ -136,7 +136,7 @@ impl Archive {
                 return logger.crash();
             }
 
-            if old.itver >= new.itver {
+            if old.itver > new.itver {
                 log!((logger.error) Backup("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
                 return logger.crash();
             }
@@ -144,7 +144,7 @@ impl Archive {
             let _ = std::fs::remove_dir_all(&archive); // cleanup
         }
 
-        if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &archive));
+        if_err!((logger) [Backup, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &archive));
         log!((logger) Backup("Successfully loaded backup '{path_string}'"));
     }
 
@@ -153,9 +153,9 @@ impl Archive {
         // Confirm with the user about the action
         let expected = "I, as the user, confirm that I fully understand that I am wiping my ENTIRE archive and that this action is permanent and irreversible";
         log!((logger) Wipe("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):"));
-        if_err!((logger) [Archive, err => ("Entered phrase incorrect, please retry")] retry {
+        if_err!((logger) [Wipe, err => ("Entered phrase incorrect, please retry")] retry {
             log!((logger) Wipe("\"{expected}\""));
-            let input = logger.ask("Archive", "Enter the phrase");
+            let input = logger.ask("Wipe", "Enter the phrase");
             if &input[0..input.len() - 1] != expected { Err(()) }
             else { Ok(()) }
         });
@@ -170,7 +170,7 @@ impl Archive {
         }
 
         // Wipe archive
-        if_err!((logger) [Archive, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
+        if_err!((logger) [Wipe, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
         log!((logger) Wipe("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
     }
 
@@ -198,8 +198,8 @@ impl Archive {
 
         // Parse toml
         log!((logger) Commit("Parsing toml at '{}'", entry.to_string_lossy()));
-        let entry = if_err!((logger) [Archive, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
-        let entry = if_err!((logger) [Archive, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
+        let entry = if_err!((logger) [Commit, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
+        let entry = if_err!((logger) [Commit, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
             Crash => {
                 log!((logger) Commit("{err:#?}") as Fatal);
                 logger.crash()
@@ -207,7 +207,7 @@ impl Archive {
         });
 
         // Construct entry
-        let container = if_err!((logger) [Archive, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
+        let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
         Entry::new(entry, &entry_string, container, logger.hollow());
 
         // Backup to not rollback commit
