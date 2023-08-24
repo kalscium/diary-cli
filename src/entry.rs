@@ -44,6 +44,7 @@ macro_rules! write_db_container {
     }
 }
 
+#[macro_export]
 macro_rules! unpack_array {
     ($result:ident from $raw:ident with $logger:ident by $x:ident => $code:expr) => {
         let mut $result = Vec::with_capacity($raw.len());

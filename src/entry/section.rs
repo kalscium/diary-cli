@@ -3,13 +3,14 @@ use super::*;
 use soulog::*;
 use std::path::Path;
 use crate::list;
+use crate::unpack_array;
 use std::fs;
 
 // Some ease of life macros
 macro_rules! get {
     ($key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
         let key = stringify!($key);
-        let obj = unwrap_opt!(($table.get(key)) with $logger, format: Section("Entry '{0}', seciton {1} must have '{key}' attribute", $entry, $idx));
+        let obj = unwrap_opt!(($table.get(key)) with $logger, format: Section("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx));
 
         unwrap_opt!((obj.$func()) with $logger, format: Section("Entry '{0}', section {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
     }}
@@ -43,18 +44,9 @@ impl Section {
 
         // Parse notes
         log!((logger) Section("Parsing section's notes"));
-        let mut notes = Vec::with_capacity(raw_notes.len());
-        for i in raw_notes {
-            notes.push(
-                match i.as_str() {
-                    Some(x) => x.to_string(),
-                    None => {
-                        log!((logger.error) Section("All notes in entry '{entry}', section '{idx}' must be strings") as Fatal);
-                        logger.crash()
-                    }
-                }
-            )
-        };
+        unpack_array!(notes from raw_notes with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: Section("All notes in entry '{entry}', section '{idx}' must be strings")).to_string()
+        );
 
         log!((logger) Section("Writing entry '{entry}'s section {idx} into archive..."));
         log!((logger) Section("(failure to do so may corrupt archive!)"));

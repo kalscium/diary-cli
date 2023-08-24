@@ -1,12 +1,60 @@
 use soulog::*;
 use lazy_db::*;
 use crate::entry::*;
+use toml::Table;
+use crate::unpack_array;
+
+// Some ease of life macros
+macro_rules! get {
+    ($key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
+        let key = stringify!($key);
+        let obj = unwrap_opt!(($table.get(key)) with $logger, format: Collection("moc '{0}', collection {1} must have '{key}' attribute", $entry, $idx));
+
+        unwrap_opt!((obj.$func()) with $logger, format: Collection("moc '{0}', collection {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
+    }}
+}
 
 pub struct Collection {
     pub container: LazyContainer,
     pub title: Option<String>,
     pub notes: Option<Box<[String]>>,
     pub include: Option<Box<[String]>>,
+}
+
+impl Collection {
+    pub fn new(table: &Table, container: LazyContainer, moc: &str, idx: u8, mut logger: impl Logger) -> Self {
+        log!((logger) Collection("Parsing moc '{moc}'s collection {idx}..."));
+
+        // Get the basic needed data
+        log!((logger) Collection("Reading collection's data..."));
+        let title = get!(title at (moc, idx) from table as as_str with logger).to_string();
+        let raw_notes = get!(notes at (moc, idx) from table as as_array with logger);
+        let raw_include = get!(include at (moc, idx) from table as as_array with logger);
+
+        // Parse arrays
+        unpack_array!(notes from raw_notes with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: Collection("All notes in moc '{moc}', collection '{idx}' must be strings")).to_string()
+        );
+
+        unpack_array!(include from raw_include with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: Collection("All included groups in moc '{moc}', collection '{idx}' must be strings")).to_string()
+        );
+
+        log!((logger) Collection("Writing moc '{moc}'s collection {idx} into archive..."));
+        log!((logger) Collection("(failure to do so may corrupt archive!)"));
+        let mut this = Self {
+            container,
+            title: Some(title),
+            notes: Some(notes.into_boxed_slice()),
+            include: Some(include.into_boxed_slice()),
+        };
+
+        this.store_lazy(logger.hollow());
+        this.clear_cache();
+        log!((logger) Collection("Successfully parsed and written moc's collection {idx} into archive"));
+        log!((logger) Collection("")); // spacer
+        this
+    }
 }
 
 // impl the lazy stuff
@@ -72,4 +120,10 @@ impl Collection {
             logger
         )
     });
+}
+
+impl Drop for Collection {
+    fn drop(&mut self) {
+        self.store_lazy(crate::DiaryLogger::new());
+    }
 }
