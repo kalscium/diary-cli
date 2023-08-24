@@ -214,7 +214,19 @@ impl Archive {
 
         // Construct entry
         let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
-        Entry::new(entry, &entry_string, container, logger.hollow());
+
+        // Checks if it is a moc
+        let is_moc = if let Some(x) = entry.get("moc") {
+            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{entry_string}' must be boolean"))
+        } else { false };
+
+        if is_moc {
+            log!((logger) Commit("Detected that config file '{entry_string}' is an moc (map of content)"));
+            todo!();
+        } else {
+            log!((logger) Commit("Detected that config file '{entry_string}' is an entry"));
+            Entry::new(entry, &entry_string, container, logger.hollow());
+        }
 
         // Backup to not rollback commit
         let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
