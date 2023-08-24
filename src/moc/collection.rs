@@ -2,7 +2,6 @@ use soulog::*;
 use lazy_db::*;
 use crate::entry::*;
 use toml::Table;
-use crate::unpack_array;
 
 // Some ease of life macros
 macro_rules! get {
@@ -41,7 +40,7 @@ impl Collection {
         );
 
         log!((logger) Collection("Writing moc '{moc}'s collection {idx} into archive..."));
-        log!((logger) Collection("(failure to do so may corrupt archive!)"));
+        log!((logger.error) Collection("(failure to do so may corrupt archive!)") as Warning);
         let mut this = Self {
             container,
             title: Some(title),
@@ -55,10 +54,7 @@ impl Collection {
         log!((logger) Collection("")); // spacer
         this
     }
-}
 
-// impl the lazy stuff
-impl Collection {
     pub fn store_lazy(&self, mut logger: impl Logger) {
         // Only store them if they are accessed (maybe modified)
         if let Some(x) = &self.title { write_db_container!(Collection(self.container) title = new_string(x) with logger); }

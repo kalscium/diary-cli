@@ -5,6 +5,7 @@ use soulog::*;
 use lazy_db::*;
 pub use crate::{
     list,
+    unpack_array,
     unwrap_opt,
     read_db_container,
     write_db_container,
@@ -122,7 +123,7 @@ impl Entry {
         if_err!((logger) [Entry, err => ("While writing section list length: {err:?}")] retry write_container!((list) length = new_u16(raw_sections.len() as u16)));
 
         log!((logger) Entry("Storing entry's parsed and checked data into archive..."));
-        log!((logger) Entry("(if this fails, this may leave your archive (diary) in a corrupted state!)"));
+        log!((logger.error) Entry("if this fails, this may leave your archive (diary) in a corrupted state!") as Warning);
 
         let mut this = Self {
             container,
@@ -237,6 +238,7 @@ impl Entry {
     });
 
     cache_field!(sections(this, logger) -> Box<[Section]> {
+        let length = search_container!((this.container) /sections::length);
         let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.read_container("sections"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] retry container.read_data("length"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u16()} manual {
