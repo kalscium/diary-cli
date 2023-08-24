@@ -2,6 +2,7 @@ use lazy_db::*;
 use crate::{home_dir, unwrap_opt};
 use soulog::*;
 use std::path::PathBuf;
+use std::path::Path;
 use crate::entry::Entry;
 
 pub struct Archive {
@@ -74,7 +75,8 @@ impl Archive {
     }
 
     /// Backs up home archive to specified path
-    pub fn backup(out_path: PathBuf, mut logger: impl Logger) {
+    pub fn backup(out_path: impl AsRef<Path>, mut logger: impl Logger) {
+        let out_path = out_path.as_ref();
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
         let out_string = out_path.to_string_lossy();
@@ -87,7 +89,8 @@ impl Archive {
     }
 
     /// Loads a backup if that backup is the same as the active archive and or newer than the active archive, otherwise errors will be thrown
-    pub fn load_backup(path: PathBuf, mut logger: impl Logger) -> Self {
+    pub fn load_backup(path: impl AsRef<Path>, mut logger: impl Logger) -> Self {
+        let path = path.as_ref();
         let archive = home_dir().join("archive");
         let archive_string = archive.to_string_lossy();
         let path_string = path.to_string_lossy();
@@ -155,7 +158,8 @@ impl Archive {
         log!((logger) Archive("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
     }
 
-    pub fn commit(&self, entry: PathBuf, mut logger: impl Logger) {
+    pub fn commit(&self, entry: impl AsRef<Path>, mut logger: impl Logger) {
+        let entry = entry.as_ref();
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
 
