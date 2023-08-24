@@ -45,7 +45,7 @@ impl Commands {
             Wipe => Archive::load(logger.hollow()).wipe(logger.hollow()),
             Commit { file_path } => Archive::load(logger.hollow()).commit(file_path, logger.hollow()),
             Backup { out_path } => Archive::backup(out_path, logger.hollow()),
-            Load { file_path } => {Archive::load_backup(file_path, logger.hollow());}
+            Load { file_path } => Archive::load_backup(file_path, logger.hollow()),
         }
     }
 }

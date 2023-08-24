@@ -1,5 +1,5 @@
 use lazy_db::*;
-use crate::{home_dir, unwrap_opt};
+use crate::home_dir;
 use soulog::*;
 use std::path::PathBuf;
 use std::path::Path;
@@ -67,6 +67,9 @@ impl Archive {
         let uid = if_err!((logger) [Archive, err => ("While loading archive uid: {err:?}")] retry (|| search_database!((&database) uid)?.collect_u64())());
         let itver = if_err!((logger) [Archive, err => ("While loading archive itver: {err:?}")] retry (|| search_database!((&database) itver)?.collect_u16())());
 
+        log!((logger) Archive("Successfully loaded archive at '{path_string}'"));
+        log!((logger) Archive(""));
+
         Self {
             database,
             uid,
@@ -83,13 +86,13 @@ impl Archive {
         
         log!((logger) Archive("Backing up archive '{path_string}' as '{out_string}'..."));
         let database = if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
-        if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry database.compile(&out_path));
+        if_err!((logger) [Archive, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
         log!((logger) Archive("Successfully backed up archive '{path_string}' as '{out_string}'"));
         log!((logger) Archive(""));
     }
 
     /// Loads a backup if that backup is the same as the active archive and or newer than the active archive, otherwise errors will be thrown
-    pub fn load_backup(path: impl AsRef<Path>, mut logger: impl Logger) -> Self {
+    pub fn load_backup(path: impl AsRef<Path>, mut logger: impl Logger) {
         let path = path.as_ref();
         let archive = home_dir().join("archive");
         let archive_string = archive.to_string_lossy();
@@ -110,7 +113,7 @@ impl Archive {
 
             // Load new archive
             let new = home_dir().join("new");
-            if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(&path, &new));
+            if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &new));
             let new = Archive::load_dir(new, logger.hollow());
 
             // Check if uid is the same and that the itver is higher
@@ -119,7 +122,7 @@ impl Archive {
                 return logger.crash();
             }
 
-            if !old.itver < new.itver {
+            if old.itver >= new.itver {
                 log!((logger.error) Archive("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
                 return logger.crash();
             }
@@ -128,8 +131,8 @@ impl Archive {
             let _ = std::fs::remove_dir_all(&archive); // cleanup
         }
 
-        if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(&path, &archive));
-        Self::load(logger)
+        if_err!((logger) [Archive, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &archive));
+        log!((logger) Archive("Successfully loaded backup '{path_string}'"));
     }
 
     /// Wipes the specified archive and asks the user for confirmation
@@ -178,7 +181,7 @@ impl Archive {
 
         // Parse toml
         log!((logger) Archive("Parsing toml at '{}'", entry.to_string_lossy()));
-        let entry = if_err!((logger) [Archive, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(&entry));
+        let entry = if_err!((logger) [Archive, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
         let entry = if_err!((logger) [Archive, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} manual {
             Crash => {
                 log!((logger) Archive("{err:#?}") as Fatal);
