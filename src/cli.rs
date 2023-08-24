@@ -21,13 +21,13 @@ pub enum Commands {
     Wipe,
     #[command(about="Commit an entry into the archive")]
     Commit {
-        #[arg(short, long, required=false, help="Specifies the path the backup will be placed")]
-        file_path: Option<String>,
+        #[arg(index=1, required=true, help="The path to the entry config toml file to commit.")]
+        file_path: String,
     },
     #[command(about="Backs up the arhive")]
     Backup {
-        #[arg(index=1, required=true, help="The path that you want the backup file generated.")]
-        out_path: String,
+        #[arg(short, long, required=false, help="Specifies path that you want the backup file to be generated.")]
+        out_path: Option<String>,
     },
     #[command(about="Loads a backed up archive")]
     Load {
@@ -46,15 +46,15 @@ impl Commands {
             Test => println!("Hello, world!"),
             Init => {Archive::init(logger);},
             Wipe => Archive::load(logger.hollow()).wipe(logger),
-            Backup { out_path } => Archive::backup(out_path, logger),
+            Commit { file_path } => Archive::load(logger.hollow()).commit(file_path, logger),
             Load { file_path } => Archive::load_backup(file_path, logger),
             Rollback => Archive::rollback(logger),
-            Commit { file_path } => {
-                match file_path {
-                    Some(path) => Archive::load(logger.hollow()).commit(path, logger),
-                    None => Archive::load(logger.hollow()).commit(home_dir().join("backup.ldb"), logger),
+            Backup { out_path } => {
+                match out_path {
+                    Some(path) => Archive::backup(path, logger),
+                    None => Archive::backup(home_dir().join("backup.ldb"), logger),
                 }
-            }
+            },
         }
     }
 }
