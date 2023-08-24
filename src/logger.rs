@@ -5,7 +5,7 @@ pub struct DiaryLogger {
 }
 
 impl Logger for DiaryLogger {
-    fn new() -> Self { Self { retry_count: 3 } }
+    fn new() -> Self { Self { retry_count: 2 } }
     fn hollow(&self) -> Self { Self::new() }
 
     fn crash<T>(&self) -> T {
@@ -17,7 +17,7 @@ impl Logger for DiaryLogger {
     }
 
     fn log(&mut self, log: Log) {
-        self.retry_count = 3;
+        self.retry_count = 2;
         println!("{}", colour_format!(blue("["), cyan(log.origin), blue("] "), none(log.message)));
     }
 

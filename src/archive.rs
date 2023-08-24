@@ -82,7 +82,7 @@ impl Archive {
         log!((logger) RollBack("Rolling back to last backup..."));
         println!("{}", colour_format![yellow("Warning"), blue(": "), none("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.")]);
         let path = home_dir().join("backup.ldb");
-        if !path.exists() {
+        if !path.is_file() {
             log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
             return logger.crash();
         } Self::load_backup(path, logger.hollow());
@@ -97,6 +97,12 @@ impl Archive {
         let out_string = out_path.to_string_lossy();
         
         log!((logger) Backup("Backing up archive '{path_string}' as '{out_string}'..."));
+
+        if !path.is_dir() {
+            log!((logger.error) Backup("Archive does not exist, run `diary-cli init` to create a new one before you can back it up.") as Fatal);
+            return logger.crash();
+        }
+
         let database = if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
         if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
         log!((logger) Backup("Successfully backed up archive '{path_string}' as '{out_string}'"));
