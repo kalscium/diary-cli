@@ -125,7 +125,7 @@ impl MOC {
         let description = get!(description at moc_path from moc_table as as_str with logger).to_string();
         let raw_notes = get!(notes at moc_path from moc_table as as_array with logger);
         let raw_groups = get!(groups at moc_path from moc_table as as_array with logger);
-        let raw_collections = get!(groups at moc_path from moc_table as as_array with logger);
+        let raw_collections = get!(collections at moc_path from moc_table as as_array with logger);
 
         // set the container
         let container =
