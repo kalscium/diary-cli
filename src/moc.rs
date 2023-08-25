@@ -114,4 +114,59 @@ impl MOC {
 
         colletions.into_boxed_slice()
     });
+
+    pub fn new(table: Table, moc_path: &str, database: LazyContainer, mut logger: impl Logger) -> Self {
+        log!((logger) MOC("Reading moc '{moc_path}'s raw unchecked data..."));
+
+        let moc_table = get!(moc at moc_path from table as as_table with logger);
+        let uid = get!(uid at moc_path from moc_table as as_str with logger).to_string();
+
+        let title = get!(title at moc_path from moc_table as as_str with logger).to_string();
+        let description = get!(description at moc_path from moc_table as as_str with logger).to_string();
+        let raw_notes = get!(notes at moc_path from moc_table as as_array with logger);
+        let raw_groups = get!(groups at moc_path from moc_table as as_array with logger);
+        let raw_collections = get!(groups at moc_path from moc_table as as_array with logger);
+
+        // set the container
+        let container =
+            if_err!((logger) [MOC, err => ("While initialising moc: '{err:?}'")] retry database.new_container(&uid));
+
+        // parse simple arrays
+        log!((logger) MOC("Parsing notes & groups"));
+        unpack_array!(notes from raw_notes with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: MOC("All notes in moc '{moc_path}' must be strings")).to_string()
+        );
+
+        unpack_array!(groups from raw_groups with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: MOC("All groups in moc '{moc_path}' must be strings")).to_string()
+        );
+
+        // parse collections
+        log!((logger) MOC("Parsing moc's collections..."));
+        let list = if_err!((logger) [MOC, err => ("While initialising collections: {err:?}")] retry container.new_container("collections"));
+        unpack_array!(collections from raw_collections with logger by (i, x) => {
+            let container = if_err!((logger) [MOC, err => ("While initialising collection {i}: {err:?}")] retry list.new_container(i.to_string()));
+            let table = unwrap_opt!((x.as_table()) with logger, format: MOC("MOC '{moc_path}', collection {i} must be a toml table"));
+            Collection::new(table, container, moc_path, i as u8, logger.hollow()) // Write into that container
+        });
+        if_err!((logger) [MOC, err => ("While writing collection list length: {err:?}")] retry write_container!((list) length = new_u16(raw_collections.len() as u16)));
+
+        log!((logger) Entry("Storing moc's parsed and checked data into archive..."));
+        log!((logger.error) Entry("if this fails, this may leave your archive (diary) in a corrupted state!") as Warning);
+
+        let mut this = Self {
+            uid,
+            container,
+            title: Some(title),
+            description: Some(description),
+            notes: Some(notes.into_boxed_slice()),
+            groups: Some(groups.into_boxed_slice()),
+            collections: Some(collections.into_boxed_slice()),
+        };
+        this.store_lazy(logger.hollow());
+        log!((logger) MOC("Successfully written moc into archive"));
+        log!((logger) MOC(""));
+        this.clear_cache();
+        this
+    }
 }

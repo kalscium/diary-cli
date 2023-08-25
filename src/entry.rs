@@ -86,8 +86,8 @@ impl Entry {
         log!((logger) Entry("Reading entry '{entry_path}'s raw unchecked data..."));
 
         let entry_table = get!(entry at entry_path from table as as_table with logger); // For nice entry nesting
-
         let uid = get!(uid at entry_path from entry_table as as_str with logger).to_string();
+
         let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
         let description = get!(description at entry_path from entry_table as as_str with logger).to_string();
         let raw_notes = get!(notes at entry_path from entry_table as as_array with logger);
