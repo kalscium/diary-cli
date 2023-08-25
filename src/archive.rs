@@ -216,18 +216,18 @@ impl Archive {
             logger.crash()
         });
 
-        // Construct entry
-        let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /contents/));
-
+        
         // Checks if it is a moc
         let is_moc = if let Some(x) = entry.get("is_moc") {
             crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{config_string}' must be boolean"))
         } else { false };
-
+        
         if is_moc {
+            let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /mocs/));
             log!((logger) Commit("Detected that config file '{config_string}' is an moc (map of contents)"));
             MOC::new(entry, &config_string, container, logger.hollow());
         } else {
+            let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /entries/));
             log!((logger) Commit("Detected that config file '{config_string}' is an entry"));
             Entry::new(entry, &config_string, container, logger.hollow());
         }
