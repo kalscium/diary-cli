@@ -144,6 +144,10 @@ impl Archive {
                 return logger.crash();
             }
 
+            if old.itver == new.itver {
+                log!((logger.error) Backup("Cannot load backup is it is the same age as the currently loaded archive (itver is the same)") as Fatal);
+            }
+
             if old.itver > new.itver {
                 log!((logger.error) Backup("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
                 return logger.crash();
@@ -216,7 +220,7 @@ impl Archive {
         let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /contents/));
 
         // Checks if it is a moc
-        let is_moc = if let Some(x) = entry.get("moc") {
+        let is_moc = if let Some(x) = entry.get("is_moc") {
             crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{config_string}' must be boolean"))
         } else { false };
 
@@ -227,6 +231,10 @@ impl Archive {
             log!((logger) Commit("Detected that config file '{config_string}' is an entry"));
             Entry::new(entry, &config_string, container, logger.hollow());
         }
+
+        // Update itver
+        log!((logger) Commit("Updating archive itver..."));
+        if_err!((logger) [Commit, err => ("While update archive itver: {err:?}")] retry write_database!((self.database) itver = new_u16(self.itver + 1)));
 
         // Backup to not rollback commit
         let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up

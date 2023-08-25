@@ -24,7 +24,7 @@ pub enum Commands {
         #[arg(index=1, required=true, help="The path to the entry config toml file to commit.")]
         file_path: String,
     },
-    #[command(about="Backs up the arhive")]
+    #[command(about="Backs up the archive")]
     Backup {
         #[arg(short, long, required=false, help="Specifies path that you want the backup file to be generated.")]
         out_path: Option<String>,
