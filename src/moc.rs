@@ -18,6 +18,7 @@ macro_rules! get {
 
 pub struct MOC {
     pub container: LazyContainer,
+    pub uid: String,
     pub title: Option<String>,
     pub description: Option<String>,
     pub notes: Option<Box<[String]>>,
@@ -52,9 +53,10 @@ impl MOC {
         }
     }
 
-    pub fn load_lazy(container: LazyContainer) -> Self {
+    pub fn load_lazy(uid: String, mut logger: impl Logger, database: LazyContainer) -> Self {
         Self {
-            container,
+            container: if_err!((logger) [MOC, err => ("While reading moc from archive: {err:?}")] retry database.read_container(&uid)),
+            uid,
             title: None,
             description: None,
             notes: None,

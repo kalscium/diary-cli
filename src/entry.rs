@@ -71,6 +71,7 @@ macro_rules! get {
 
 pub struct Entry {
     pub container: LazyContainer,
+    pub uid: String,
     pub sections: Option<Box<[Section]>>,
     pub title: Option<String>,
     pub description: Option<String>,
@@ -81,16 +82,21 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new(table: Table, entry_path: &str, container: LazyContainer, mut logger: impl Logger) -> Self {
+    pub fn new(table: Table, entry_path: &str, database: LazyContainer, mut logger: impl Logger) -> Self {
         log!((logger) Entry("Reading entry '{entry_path}'s raw unchecked data..."));
 
         let entry_table = get!(entry at entry_path from table as as_table with logger); // For nice entry nesting
 
+        let uid = get!(uid at entry_path from entry_table as as_str with logger).to_string();
         let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
         let description = get!(description at entry_path from entry_table as as_str with logger).to_string();
         let raw_notes = get!(notes at entry_path from entry_table as as_array with logger);
         let raw_groups = get!(groups at entry_path from entry_table as as_array with logger);
         let raw_sections = get!(section at entry_path from table as as_array with logger);
+
+        // set the container
+        let container =
+            if_err!((logger) [Entry, err => ("While initialising entry: '{err:?}'")] retry database.new_container(&uid));
 
         // Get date
         log!((logger) Entry("Parsing date..."));
@@ -125,6 +131,7 @@ impl Entry {
 
         let mut this = Self {
             container,
+            uid,
             title: Some(title),
             description: Some(description),
             date: Some(date),
@@ -174,15 +181,16 @@ impl Entry {
         }
     }
 
-    pub fn load_lazy(container: LazyContainer) -> Self {
+    pub fn load_lazy(uid: String, mut logger: impl Logger, database: LazyContainer) -> Self {
         Self {
+            container: if_err!((logger) [Entry, err => ("While loading entry: {err:?}")] retry database.read_container(&uid)),
+            uid,
             title: None,
             sections: None,
             description: None,
             groups: None,
             notes: None,
             date: None,
-            container,
         }
     }
 
