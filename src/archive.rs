@@ -4,6 +4,7 @@ use soulog::*;
 use std::path::PathBuf;
 use std::path::Path;
 use crate::entry::Entry;
+use crate::moc::MOC;
 
 pub struct Archive {
     database: LazyDB,
@@ -35,6 +36,7 @@ impl Archive {
         log!((logger) Init("Writing uid and itver to archive..."));
         if_err!((logger) [Init, err => ("While writing uid: {err:?}")] retry write_database!((&database) uid = new_u64(uid)));
         if_err!((logger) [Init, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
+        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /contents::nome = new_void(())));
 
         log!((logger) Init("Successfully initialised archive '{path_string}'"));
         Self {
@@ -181,7 +183,7 @@ impl Archive {
     }
 
     pub fn commit(&self, entry: impl AsRef<Path>, mut logger: impl Logger) {
-        let entry = entry.as_ref();
+        let config = entry.as_ref();
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
 
@@ -192,9 +194,9 @@ impl Archive {
         }
 
         // Check if entry path exists or not
-        let entry_string = entry.to_string_lossy();
-        if !entry.is_file() {
-            log!((logger.error) Commit("Entry config file '{entry_string}' doesn't exist") as Fatal);
+        let config_string = config.to_string_lossy();
+        if !config.is_file() {
+            log!((logger.error) Commit("Entry config file '{config_string}' doesn't exist") as Fatal);
             return logger.crash();
         }
         
@@ -203,27 +205,27 @@ impl Archive {
         Self::backup(home_dir().join("backup.ldb"), logger.hollow());
 
         // Parse toml
-        log!((logger) Commit("Parsing toml at '{}'", entry.to_string_lossy()));
-        let entry = if_err!((logger) [Commit, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(entry));
+        log!((logger) Commit("Parsing toml at '{}'", config.to_string_lossy()));
+        let entry = if_err!((logger) [Commit, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(config));
         let entry = if_err!((logger) [Commit, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} crash {
             log!((logger) Commit("{err:#?}") as Fatal);
             logger.crash()
         });
 
         // Construct entry
-        let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry self.database.as_container());
+        let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /contents/));
 
         // Checks if it is a moc
         let is_moc = if let Some(x) = entry.get("moc") {
-            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{entry_string}' must be boolean"))
+            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{config_string}' must be boolean"))
         } else { false };
 
         if is_moc {
-            log!((logger) Commit("Detected that config file '{entry_string}' is an moc (map of content)"));
-            todo!();
+            log!((logger) Commit("Detected that config file '{config_string}' is an moc (map of contents)"));
+            MOC::new(entry, &config_string, container, logger.hollow());
         } else {
-            log!((logger) Commit("Detected that config file '{entry_string}' is an entry"));
-            Entry::new(entry, &entry_string, container, logger.hollow());
+            log!((logger) Commit("Detected that config file '{config_string}' is an entry"));
+            Entry::new(entry, &config_string, container, logger.hollow());
         }
 
         // Backup to not rollback commit

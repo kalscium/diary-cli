@@ -23,7 +23,7 @@ impl Logger for DiaryLogger {
         let message = match log.log_type {
             LogType::Log => panic!("meta error: invalid error log type 'Log'"),
             LogType::Inconvenience => colour_format![blue("["), yellow(log.origin), blue("] "), yellow("Inconvenience"), blue(": "), none(log.message)],
-            LogType::Warning => colour_format![blue("["), yellow(log.origin), blue("]"), yellow("Warning"), blue(": "), none(log.message)],
+            LogType::Warning => colour_format![blue("["), yellow(log.origin), blue("] "), yellow("Warning"), blue(": "), none(log.message)],
             LogType::Failure => colour_format![blue("["), red(log.origin), blue("] "), red("Failure"), blue(": "), none(log.message)],
             LogType::Fatal => colour_format![blue("["), red(log.origin), blue("] "), red("Fatal"), blue(": "), none(log.message)],
         }; println!("{message}");
