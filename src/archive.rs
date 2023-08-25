@@ -82,7 +82,7 @@ impl Archive {
     /// Rolls back to last backup
     pub fn rollback(mut logger: impl Logger) {
         log!((logger) RollBack("Rolling back to last backup..."));
-        println!("{}", colour_format![yellow("Warning"), blue(": "), none("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.")]);
+        log!((logger.error) RollBack("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.") as Warning);
         let path = home_dir().join("backup.ldb");
         if !path.is_file() {
             log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
