@@ -1,7 +1,7 @@
 use clap::*;
 use crate::archive::Archive;
-use crate::home_dir;
 use crate::logger::DiaryLogger;
+use crate::*;
 use soulog::*;
 
 #[derive(Parser)]
@@ -38,17 +38,15 @@ pub enum Commands {
     Rollback,
     #[command(about="Returns the days since 2020 from a specified date")]
     Since {
-        #[arg(index=1, required=true)]
-        year: u16,
-        #[arg(index=2, required=true)]
-        month: u16,
-        #[arg(index=2, required=true)]
-        day: u16,
+        #[arg(short, long, number_of_values=3, value_names=&["year", "month", "day"])]
+        date: Option<Vec<u16>>,
+        #[arg(short, long)]
+        today: bool,
     },
 }
 
 impl Commands {
-    pub fn execute(&self) {
+    pub fn execute(self) {
         use Commands::*;
         let logger = DiaryLogger::new();
         match self {
@@ -64,7 +62,7 @@ impl Commands {
                     None => Archive::backup(home_dir().join("backup.ldb"), logger),
                 }
             },
-            Since { year, month, day } => todo!(),
+            Since { date, today: _ } => since::since_2023(date, logger),
         }
     }
 }
