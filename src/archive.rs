@@ -36,7 +36,8 @@ impl Archive {
         log!((logger) Init("Writing uid and itver to archive..."));
         if_err!((logger) [Init, err => ("While writing uid: {err:?}")] retry write_database!((&database) uid = new_u64(uid)));
         if_err!((logger) [Init, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
-        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /contents::nome = new_void(())));
+        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /entries::nome = new_void(())));
+        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /mocs::nome = new_void(())));
 
         log!((logger) Init("Successfully initialised archive '{path_string}'"));
         Self {
