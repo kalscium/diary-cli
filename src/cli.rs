@@ -36,6 +36,15 @@ pub enum Commands {
     },
     #[command(about="Rolls back to the last backed up archive")]
     Rollback,
+    #[command(about="Returns the days since 2020 from a specified date")]
+    Since {
+        #[arg(index=1, required=true)]
+        year: u16,
+        #[arg(index=2, required=true)]
+        month: u16,
+        #[arg(index=2, required=true)]
+        day: u16,
+    },
 }
 
 impl Commands {
@@ -55,6 +64,7 @@ impl Commands {
                     None => Archive::backup(home_dir().join("backup.ldb"), logger),
                 }
             },
+            Since { year, month, day } => todo!(),
         }
     }
 }

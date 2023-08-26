@@ -151,7 +151,8 @@ impl Entry {
         // Only store them if modified
         if let Some(x) = &self.title { write_db_container!(Entry(self.container) title = new_string(x) with logger); }
         if let Some(x) = &self.description { write_db_container!(Entry(self.container) description = new_string(x) with logger); }
-        
+        if let Some(x) = &self.date { write_db_container!(Entry(self.container) date = new_u16_array(x) with logger); }
+
         // The bloody lists & arrays
         if let Some(x) = &self.notes {
             list::write(
@@ -168,15 +169,6 @@ impl Entry {
                 |file, data| LazyData::new_string(file, data),
                 &if_err!((logger) [Entry, err => ("While writing groups to archive: {:?}", err)] retry self.container.new_container("groups")),
                 logger.hollow()
-            );
-        }
-
-        if let Some(x) = &self.date {
-            list::write(
-                x.as_ref(),
-                |file, data| LazyData::new_u16(file, *data),
-                &if_err!((logger) [Entry, err => ("While writing date to archive: {:?}", err)] retry self.container.new_container("date")),
-                logger
             );
         }
     }
@@ -236,11 +228,8 @@ impl Entry {
     });
 
     cache_field!(date(this, logger) -> [u16; 3] {
-        let array = list::read(
-            |data| data.collect_u16(),
-            &if_err!((logger) [Entry, err => ("While reading from entry's date: {err:?}")] retry this.container.read_container("date")),
-            logger
-        ); [array[0], array[1], array[2]]
+        let array = read_db_container!(date from Entry(this.container) as collect_u16_array with logger);
+        [array[0], array[1], array[2]]
     });
 
     cache_field!(sections(this, logger) -> Box<[Section]> {
