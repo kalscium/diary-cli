@@ -146,7 +146,7 @@ impl Archive {
             }
 
             if old.itver == new.itver {
-                log!((logger.error) Backup("Cannot load backup is it is the same age as the currently loaded archive (itver is the same)") as Fatal);
+                log!((logger.error) Backup("Detected that backup is the same age as the currently loaded archive (itver is the same)") as Warning);
             }
 
             if old.itver > new.itver {
@@ -241,7 +241,7 @@ impl Archive {
         let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
         Self::backup(home_dir().join("backup.ldb"), logger.hollow());
 
-        log!((logger) Commit("Successfully commited entry to archive"));
+        log!((logger) Commit("Successfully commited config to archive"));
     }
 
     #[inline]

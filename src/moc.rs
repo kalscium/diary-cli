@@ -181,6 +181,7 @@ impl MOC {
         moc.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
         moc.insert("groups".into(), self.groups(logger.hollow()).to_vec().into());
         map.insert("moc".into(), moc.into());
+        map.insert("is_moc".into(), true.into());
 
         self.clear_cache();
 
