@@ -261,4 +261,17 @@ impl Archive {
             }
         }
     }
+
+    pub fn get_moc(&self, uid: String, mut logger: impl Logger) -> Option<MOC> {
+        match search_database!((self.database) /mocs/(&uid)) {
+            Ok(x) => Some(MOC::load_lazy(uid, x)),
+            Err(err) => match err {
+                LDBError::DirNotFound(..) => None,
+                _ => {
+                    log!((logger.error) Archive("While getting moc '{uid}': {err:?}") as Fatal);
+                    logger.crash()
+                }
+            }
+        }
+    }
 }

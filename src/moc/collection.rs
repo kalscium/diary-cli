@@ -1,7 +1,7 @@
 use soulog::*;
 use lazy_db::*;
 use crate::entry::*;
-use toml::Table;
+use toml::{Table, Value};
 
 // Some ease of life macros
 macro_rules! get {
@@ -53,6 +53,19 @@ impl Collection {
         log!((logger) Collection("Successfully parsed and written moc's collection {idx} into archive"));
         log!((logger) Collection("")); // spacer
         this
+    }
+
+    pub fn pull(&mut self, logger: impl Logger) -> Table {
+        let mut map = Table::new();
+
+        // Insert title and notes
+        map.insert("title".into(), Value::String(self.title(logger.hollow()).clone()));
+        map.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
+        map.insert("include".into(), self.include(logger.hollow()).to_vec().into());
+
+        self.clear_cache();
+
+        map
     }
 
     pub fn store_lazy(&self, mut logger: impl Logger) {

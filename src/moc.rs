@@ -53,9 +53,9 @@ impl MOC {
         }
     }
 
-    pub fn load_lazy(uid: String, mut logger: impl Logger, database: LazyContainer) -> Self {
+    pub fn load_lazy(uid: String, container: LazyContainer) -> Self {
         Self {
-            container: if_err!((logger) [MOC, err => ("While reading moc from archive: {err:?}")] retry database.read_container(&uid)),
+            container,
             uid,
             title: None,
             description: None,
@@ -168,6 +168,32 @@ impl MOC {
         log!((logger) MOC(""));
         this.clear_cache();
         this
+    }
+
+    pub fn pull(&mut self, logger: impl Logger) -> Table {
+        let mut map = Table::new();
+        let mut moc = Table::new();
+
+        // Insert uid, title, description, notes, groups, and date
+        moc.insert("uid".into(), self.uid.clone().into());
+        moc.insert("title".into(), self.title(logger.hollow()).clone().into());
+        moc.insert("description".into(), self.description(logger.hollow()).clone().into());
+        moc.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
+        moc.insert("groups".into(), self.groups(logger.hollow()).to_vec().into());
+        map.insert("moc".into(), moc.into());
+
+        self.clear_cache();
+
+        map.insert("collection".into(), self.collections(logger.hollow())
+            .iter_mut()
+            .map(|x| x.pull(logger.hollow()))
+            .collect::<Vec<Table>>()
+            .into()
+        );
+
+        self.clear_cache();
+
+        map
     }
 }
 
