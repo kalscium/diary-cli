@@ -128,7 +128,7 @@ impl Section {
     });
 
     cache_field!(content(this, logger) -> String {
-        read_db_container!(path from Section(this.container) as collect_string with logger)
+        read_db_container!(content from Section(this.container) as collect_string with logger)
     });
 }
 

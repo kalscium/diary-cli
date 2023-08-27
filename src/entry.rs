@@ -165,8 +165,8 @@ impl Entry {
         map.insert("section".into(), self.sections(logger.hollow())
             .iter_mut()
             .enumerate()
-            .flat_map(|(i, x)| x.pull(i as u8, path, logger.hollow()))
-            .collect::<Table>()
+            .map(|(i, x)| x.pull(i as u8, path, logger.hollow()))
+            .collect::<Vec<Table>>()
             .into()
         );
 
@@ -178,9 +178,9 @@ impl Entry {
     fn array_to_date(arr: &[u16; 3], mut logger: impl Logger) -> toml::Value {
         // Format the array of u16s to a string in the RFC 3339 date format
         let date_string = format!("{:04}-{:02}-{:02}",
-            arr[0], // Year
+            arr[2], // Year
             arr[1], // Month
-            arr[2], // Day
+            arr[0], // Day
         );
     
         // Parse the string to a toml::Value::Datetime

@@ -2,13 +2,18 @@ use soulog::*;
 use std::path::PathBuf;
 use crate::{archive::Archive, unwrap_opt};
 
-pub fn pull(path: PathBuf, file_name: String, is_moc: bool, uid: String, logger: impl Logger) {
+pub fn pull(path: PathBuf, file_name: String, is_moc: bool, uid: String, mut logger: impl Logger) {
     let archive = Archive::load(logger.hollow());
+    
     if is_moc {
-        todo!()
+        log!((logger) Pull("Pulling moc with uid '{uid}' from archive..."));
+        todo!();
     } else {
-        pull_entry(archive, path, file_name, uid, logger)
+        log!((logger) Pull("Pulling entry with uid '{uid}' from archive..."));
+        pull_entry(archive, path, file_name, uid, logger.hollow());
     }
+
+    log!((logger) Pull("Successfully pulled config file from archive"));
 }
 
 fn pull_entry(archive: Archive, path: PathBuf, file_name: String, uid: String, mut logger: impl Logger) {
