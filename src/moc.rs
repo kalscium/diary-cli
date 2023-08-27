@@ -78,7 +78,7 @@ impl MOC {
     });
 
     cache_field!(description(this, logger) -> String {
-        read_db_container!(title from MOC(this.container) as collect_string with logger)
+        read_db_container!(description from MOC(this.container) as collect_string with logger)
     });
 
     cache_field!(notes(this, logger) -> Box<[String]> {
