@@ -3,6 +3,7 @@ pub use section::*;
 use toml::Table;
 use soulog::*;
 use lazy_db::*;
+use std::path::Path;
 pub use crate::{
     list,
     unpack_array,
@@ -146,6 +147,49 @@ impl Entry {
         this
     }
 
+    pub fn pull(&mut self, path: &Path, logger: impl Logger) -> Table {
+        let mut map = Table::new();
+        let mut entry = Table::new();
+
+        // Insert uid, title, description, notes, groups, and date
+        entry.insert("uid".into(), self.uid.clone().into());
+        entry.insert("title".into(), self.title(logger.hollow()).clone().into());
+        entry.insert("description".into(), self.description(logger.hollow()).clone().into());
+        entry.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
+        entry.insert("groups".into(), self.groups(logger.hollow()).to_vec().into());
+        entry.insert("date".into(), Self::array_to_date(self.date(logger.hollow()), logger.hollow()));
+        map.insert("entry".into(), entry.into());
+
+        self.clear_cache();
+
+        map.insert("section".into(), self.sections(logger.hollow())
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(i, x)| x.pull(i as u8, path, logger.hollow()))
+            .collect::<Table>()
+            .into()
+        );
+
+        self.clear_cache();
+
+        map
+    }
+
+    fn array_to_date(arr: &[u16; 3], mut logger: impl Logger) -> toml::Value {
+        // Format the array of u16s to a string in the RFC 3339 date format
+        let date_string = format!("{:04}-{:02}-{:02}",
+            arr[0], // Year
+            arr[1], // Month
+            arr[2], // Day
+        );
+    
+        // Parse the string to a toml::Value::Datetime
+        toml::Value::Datetime(if_err!((logger) [Pull, _err => ("Invalid entry date")]
+            {date_string.parse()}
+            crash logger.crash()
+        ))
+    }
+
     pub fn store_lazy(&self, mut logger: impl Logger) {
         log!((logger) Entry("Storing entry into archive..."));
         // Only store them if modified
@@ -173,9 +217,9 @@ impl Entry {
         }
     }
 
-    pub fn load_lazy(uid: String, mut logger: impl Logger, database: LazyContainer) -> Self {
+    pub fn load_lazy(uid: String, container: LazyContainer) -> Self {
         Self {
-            container: if_err!((logger) [Entry, err => ("While loading entry: {err:?}")] retry database.read_container(&uid)),
+            container,
             uid,
             title: None,
             sections: None,
@@ -249,4 +293,10 @@ impl Entry {
 
         sections.into_boxed_slice()
     });
+}
+
+impl Drop for Entry {
+    fn drop(&mut self) {
+        self.store_lazy(crate::DiaryLogger::new());
+    }
 }

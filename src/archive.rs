@@ -243,4 +243,22 @@ impl Archive {
 
         log!((logger) Commit("Successfully commited entry to archive"));
     }
+
+    #[inline]
+    pub fn database(&self) -> &LazyDB {
+        &self.database
+    }
+
+    pub fn get_entry(&self, uid: String, mut logger: impl Logger) -> Option<Entry> {
+        match search_database!((self.database) /entries/(&uid)) {
+            Ok(x) => Some(Entry::load_lazy(uid, x)),
+            Err(err) => match err {
+                LDBError::DirNotFound(..) => None,
+                _ => {
+                    log!((logger.error) Archive("While getting entry '{uid}': {err:?}") as Fatal);
+                    logger.crash()
+                }
+            }
+        }
+    }
 }

@@ -26,7 +26,7 @@ pub enum Commands {
     },
     #[command(about="Backs up the archive")]
     Backup {
-        #[arg(short, long, required=false, help="Specifies path that you want the backup file to be generated.")]
+        #[arg(short, long, required=false, help="Specifies the path that you want the backup file to be generated.")]
         out_path: Option<String>,
     },
     #[command(about="Loads a backed up archive")]
@@ -43,6 +43,17 @@ pub enum Commands {
         #[arg(short, long)]
         today: bool,
     },
+    #[command(about="Pulls a entry or moc from the archive as toml in case you need to change something")]
+    Pull {
+        #[arg(short='m', long, help="Specifies if it is a moc or not (otherwise it is an entry).")]
+        is_moc: bool,
+        #[arg(short, long, required=true, help="The uid of the entry or moc.")]
+        uid: String,
+        #[arg(short, long, required=true, help="Specfies path of the containing folder of the config file.")]
+        path: String,
+        #[arg(short, long, default_value="config.toml", help="Specifies the name of the output config file.")]
+        file_name: String,
+    }
 }
 
 impl Commands {
@@ -63,6 +74,7 @@ impl Commands {
                 }
             },
             Since { date, today: _ } => since::since_2023(date, logger),
+            Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
         }
     }
 }

@@ -1,4 +1,4 @@
-use toml::Table;
+use toml::{Table, Value};
 use super::*;
 use soulog::*;
 use std::path::Path;
@@ -62,6 +62,22 @@ impl Section {
         log!((logger) Section("Successfully parsed and written entry's section {idx} into archive"));
         log!((logger) Section("")); // spacer
         this
+    }
+
+    pub fn pull(&mut self, idx: u8, path: &Path, mut logger: impl Logger) -> Table {
+        let mut map = Table::new();
+
+        // Insert title and notes
+        map.insert("title".into(), Value::String(self.title(logger.hollow()).clone()));
+        map.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
+
+        let path = path.join(format!("section{idx}.txt"));
+        map.insert("path".into(), path.to_string_lossy().to_string().into());
+        if_err!((logger) [Pull, err => ("While writing section as text file: {err:?}")] retry fs::write(&path, self.content(logger.hollow())));
+
+        self.clear_cache();
+
+        map
     }
 
     pub fn store_lazy(&self, mut logger: impl Logger) {
