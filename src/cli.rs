@@ -56,7 +56,7 @@ pub enum Commands {
     },
     #[command(about="Exports the archive as an `Obsidian.md` vault.")]
     Export {
-        #[arg(short, long, help="Filters out entries and mocs that don't have all these tags")]
+        #[arg(short, long, value_delimiter=' ', num_args=1.., help="Filters out entries and mocs that don't have all these tags")]
         tags: Option<Vec<String>>,
         #[arg(short, long, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
         path: String,
