@@ -76,7 +76,7 @@ pub struct Entry {
     pub sections: Option<Box<[Section]>>,
     pub title: Option<String>,
     pub description: Option<String>,
-    pub groups: Option<Box<[String]>>,
+    pub tags: Option<Box<[String]>>,
     pub notes: Option<Box<[String]>>,
     /// Date goes from `day` to `month` then to `year`
     pub date: Option<[u16; 3]>,
@@ -92,7 +92,7 @@ impl Entry {
         let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
         let description = get!(description at entry_path from entry_table as as_str with logger).to_string();
         let raw_notes = get!(notes at entry_path from entry_table as as_array with logger);
-        let raw_groups = get!(groups at entry_path from entry_table as as_array with logger);
+        let raw_tags = get!(tags at entry_path from entry_table as as_array with logger);
         let raw_sections = get!(section at entry_path from table as as_array with logger);
 
         // set the container
@@ -108,13 +108,13 @@ impl Entry {
         ); let date = [ date.day as u16, date.month as u16, date.year ];
 
         // Parse simple arrays
-        log!((logger) Entry("Parsing notes & groups..."));
+        log!((logger) Entry("Parsing notes & tags..."));
         unpack_array!(notes from raw_notes with logger by x
             => unwrap_opt!((x.as_str()) with logger, format: Entry("All notes in entry '{entry_path}' must be strings")).to_string()
         );
 
-        unpack_array!(groups from raw_groups with logger by x
-            => unwrap_opt!((x.as_str()) with logger, format: Entry("All groups in entry '{entry_path}' must be strings")).to_string()
+        unpack_array!(tags from raw_tags with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: Entry("All tags in entry '{entry_path}' must be strings")).to_string()
         );
 
         // Parse sections
@@ -137,7 +137,7 @@ impl Entry {
             description: Some(description),
             date: Some(date),
             notes: Some(notes.into_boxed_slice()),
-            groups: Some(groups.into_boxed_slice()),
+            tags: Some(tags.into_boxed_slice()),
             sections: Some(sections.into_boxed_slice()),
         };
         this.store_lazy(logger.hollow());
@@ -151,12 +151,12 @@ impl Entry {
         let mut map = Table::new();
         let mut entry = Table::new();
 
-        // Insert uid, title, description, notes, groups, and date
+        // Insert uid, title, description, notes, tags, and date
         entry.insert("uid".into(), self.uid.clone().into());
         entry.insert("title".into(), self.title(logger.hollow()).clone().into());
         entry.insert("description".into(), self.description(logger.hollow()).clone().into());
         entry.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
-        entry.insert("groups".into(), self.groups(logger.hollow()).to_vec().into());
+        entry.insert("tags".into(), self.tags(logger.hollow()).to_vec().into());
         entry.insert("date".into(), Self::array_to_date(self.date(logger.hollow()), logger.hollow()));
         map.insert("entry".into(), entry.into());
 
@@ -207,11 +207,11 @@ impl Entry {
             );
         }
 
-        if let Some(x) = &self.groups {
+        if let Some(x) = &self.tags {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [Entry, err => ("While writing groups to archive: {:?}", err)] retry self.container.new_container("groups")),
+                &if_err!((logger) [Entry, err => ("While writing tags to archive: {:?}", err)] retry self.container.new_container("tags")),
                 logger.hollow()
             );
         }
@@ -224,7 +224,7 @@ impl Entry {
             title: None,
             sections: None,
             description: None,
-            groups: None,
+            tags: None,
             notes: None,
             date: None,
         }
@@ -234,7 +234,7 @@ impl Entry {
         self.title = None;
         self.sections = None;
         self.description = None;
-        self.groups = None;
+        self.tags = None;
         self.notes = None;
         self.date = None;
     }
@@ -242,7 +242,7 @@ impl Entry {
     pub fn fill_cache(&mut self, logger: impl Logger) {
         self.title(logger.hollow());
         self.sections(logger.hollow());
-        self.groups(logger.hollow());
+        self.tags(logger.hollow());
         self.notes(logger.hollow());
         self.date(logger.hollow());
     }
@@ -263,10 +263,10 @@ impl Entry {
         )
     });
 
-    cache_field!(groups(this, logger) -> Box<[String]> {
+    cache_field!(tags(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Entry, err => ("While reading from entry's groups: {err:?}")] retry this.container.read_container("groups")),
+            &if_err!((logger) [Entry, err => ("While reading from entry's tags: {err:?}")] retry this.container.read_container("tags")),
             logger
         )
     });

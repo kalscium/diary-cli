@@ -53,6 +53,13 @@ pub enum Commands {
         path: String,
         #[arg(short, long, default_value="config.toml", help="Specifies the name of the output config file.")]
         file_name: String,
+    },
+    #[command(about="Exports the archive as an `Obsidian.md` vault.")]
+    Export {
+        #[arg(short, long, help="Filters out entries and mocs that don't have all these tags")]
+        tags: Option<Vec<String>>,
+        #[arg(short, long, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
+        path: String,
     }
 }
 
@@ -75,6 +82,7 @@ impl Commands {
             },
             Since { date, today: _ } => since::since_2023(date, logger),
             Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
+            Export { .. } => todo!(),
         }
     }
 }
