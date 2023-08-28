@@ -58,12 +58,12 @@ pub enum Commands {
     Search {
         #[arg(short, long, help="Sets if the search is strict or not (if the item must implement all tags)")]
         strict: bool,
-        #[arg(short, long, required=true, value_delimiter=' ', num_args=1..)]
+        #[arg(short, long, required=true, num_args=1..)]
         tags: Vec<String>,
     },
     #[command(about="Exports the archive as an `Obsidian.md` vault.")]
     Export {
-        #[arg(short, long, value_delimiter=' ', num_args=1.., help="Filters out entries and mocs that don't have all these tags")]
+        #[arg(short, long, num_args=1.., help="Filters out entries and mocs that don't have all these tags")]
         tags: Option<Vec<String>>,
         #[arg(short, long, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
         path: String,
