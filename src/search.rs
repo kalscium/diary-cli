@@ -49,7 +49,7 @@ pub fn search_command(strict: bool, tags: Vec<String>, mut logger: impl Logger) 
         entry_uids = search_strict(&tags, entries, logger.hollow());
         moc_uids = search_strict(&tags, mocs, logger.hollow());
     } else {
-        log!((logger) Search("Searching strictly with tags {tags:?} in mocs and entries..."));
+        log!((logger) Search("Searching with tags {tags:?} in mocs and entries..."));
         entry_uids = search(&tags, entries, logger.hollow());
         moc_uids = search(&tags, mocs, logger.hollow());
     }
