@@ -1,6 +1,7 @@
 use lazy_db::*;
 use crate::home_dir;
 use soulog::*;
+use std::fs;
 use std::path::PathBuf;
 use std::path::Path;
 use crate::entry::Entry;
@@ -273,5 +274,41 @@ impl Archive {
                 }
             }
         }
+    }
+
+    pub fn list_entries(&self, mut logger: impl Logger) -> Vec<Entry> {
+        let path = self.database.path().join("entries");
+
+        if !path.is_dir() {
+            log!((logger) Archive("Path '{}' does not exist", path.to_string_lossy()) as Fatal);
+            return logger.crash();
+        }
+
+        let mut logger1 = logger.hollow();
+        let logger2 = logger.hollow();
+        let dir = if_err!((logger) [Archive, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
+        dir.into_iter()
+            .map(|x| if_err!((logger) [Archive, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
+            .filter(|x| if_err!((logger1) [Archive, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
+            .map(|x| self.get_entry(x.file_name().to_string_lossy().to_string(), logger2.hollow()).unwrap())
+            .collect()
+    }
+
+    pub fn list_mocs(&self, mut logger: impl Logger) -> Vec<MOC> {
+        let path = self.database.path().join("mocs");
+
+        if !path.is_dir() {
+            log!((logger) Archive("Path '{}' does not exist", path.to_string_lossy()) as Fatal);
+            return logger.crash();
+        }
+
+        let mut logger1 = logger.hollow();
+        let logger2 = logger.hollow();
+        let dir = if_err!((logger) [Archive, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
+        dir.into_iter()
+            .map(|x| if_err!((logger) [Archive, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
+            .filter(|x| if_err!((logger1) [Archive, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
+            .map(|x| self.get_moc(x.file_name().to_string_lossy().to_string(), logger2.hollow()).unwrap())
+            .collect()
     }
 }

@@ -3,7 +3,7 @@ pub mod collection;
 pub use collection::*;
 use soulog::*;
 use lazy_db::*;
-use crate::entry::*;
+use crate::{entry::*, search::Searchable};
 use toml::Table;
 
 // Some ease of life macros
@@ -22,7 +22,7 @@ pub struct MOC {
     pub title: Option<String>,
     pub description: Option<String>,
     pub notes: Option<Box<[String]>>,
-    pub groups: Option<Box<[String]>>,
+    pub tags: Option<Box<[String]>>,
     pub collections: Option<Box<[Collection]>>,
 }
 
@@ -43,11 +43,11 @@ impl MOC {
             );
         }
 
-        if let Some(x) = &self.groups {
+        if let Some(x) = &self.tags {
             list::write(
                 x.as_ref(),
                 |file, data| LazyData::new_string(file, data),
-                &if_err!((logger) [MOC, err => ("While writing groups to archive: {:?}", err)] retry self.container.new_container("groups")),
+                &if_err!((logger) [MOC, err => ("While writing tags to archive: {:?}", err)] retry self.container.new_container("tags")),
                 logger.hollow()
             );
         }
@@ -60,7 +60,7 @@ impl MOC {
             title: None,
             description: None,
             notes: None,
-            groups: None,
+            tags: None,
             collections: None,
         }
     }
@@ -69,7 +69,7 @@ impl MOC {
         self.title = None;
         self.description = None;
         self.notes = None;
-        self.groups = None;
+        self.tags = None;
         self.collections = None;
     }
 
@@ -89,10 +89,10 @@ impl MOC {
         )
     });
 
-    cache_field!(groups(this, logger) -> Box<[String]> {
+    cache_field!(tags(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [MOC, err => ("While reading from moc's groups: {err:?}")] retry this.container.read_container("groups")),
+            &if_err!((logger) [MOC, err => ("While reading from moc's tags: {err:?}")] retry this.container.read_container("tags")),
             logger
         )
     });
@@ -124,7 +124,7 @@ impl MOC {
         let title = get!(title at moc_path from moc_table as as_str with logger).to_string();
         let description = get!(description at moc_path from moc_table as as_str with logger).to_string();
         let raw_notes = get!(notes at moc_path from moc_table as as_array with logger);
-        let raw_groups = get!(groups at moc_path from moc_table as as_array with logger);
+        let raw_tags = get!(tags at moc_path from moc_table as as_array with logger);
         let raw_collections = get!(collection at moc_path from table as as_array with logger);
 
         // set the container
@@ -132,13 +132,13 @@ impl MOC {
             if_err!((logger) [MOC, err => ("While initialising moc: '{err:?}'")] retry database.new_container(&uid));
 
         // parse simple arrays
-        log!((logger) MOC("Parsing notes & groups"));
+        log!((logger) MOC("Parsing notes & tags"));
         unpack_array!(notes from raw_notes with logger by x
             => unwrap_opt!((x.as_str()) with logger, format: MOC("All notes in moc '{moc_path}' must be strings")).to_string()
         );
 
-        unpack_array!(groups from raw_groups with logger by x
-            => unwrap_opt!((x.as_str()) with logger, format: MOC("All groups in moc '{moc_path}' must be strings")).to_string()
+        unpack_array!(tags from raw_tags with logger by x
+            => unwrap_opt!((x.as_str()) with logger, format: MOC("All tags in moc '{moc_path}' must be strings")).to_string()
         );
 
         // parse collections
@@ -160,7 +160,7 @@ impl MOC {
             title: Some(title),
             description: Some(description),
             notes: Some(notes.into_boxed_slice()),
-            groups: Some(groups.into_boxed_slice()),
+            tags: Some(tags.into_boxed_slice()),
             collections: Some(collections.into_boxed_slice()),
         };
         this.store_lazy(logger.hollow());
@@ -174,12 +174,12 @@ impl MOC {
         let mut map = Table::new();
         let mut moc = Table::new();
 
-        // Insert uid, title, description, notes, groups, and date
+        // Insert uid, title, description, notes, tags, and date
         moc.insert("uid".into(), self.uid.clone().into());
         moc.insert("title".into(), self.title(logger.hollow()).clone().into());
         moc.insert("description".into(), self.description(logger.hollow()).clone().into());
         moc.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
-        moc.insert("groups".into(), self.groups(logger.hollow()).to_vec().into());
+        moc.insert("tags".into(), self.tags(logger.hollow()).to_vec().into());
         map.insert("moc".into(), moc.into());
         map.insert("is_moc".into(), true.into());
 
@@ -201,5 +201,17 @@ impl MOC {
 impl Drop for MOC {
     fn drop(&mut self) {
         self.store_lazy(crate::DiaryLogger::new());
+    }
+}
+
+impl Searchable for MOC {
+    fn get_uid(&self) -> String {
+        self.uid.clone()
+    }
+
+    fn contains_tag(&mut self, tag: &String, logger: impl Logger) -> bool {
+        let result = self.tags(logger).contains(tag);
+        self.tags = None;
+        result
     }
 }

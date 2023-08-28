@@ -4,6 +4,7 @@ use toml::Table;
 use soulog::*;
 use lazy_db::*;
 use std::path::Path;
+use crate::search::Searchable;
 pub use crate::{
     list,
     unpack_array,
@@ -298,5 +299,17 @@ impl Entry {
 impl Drop for Entry {
     fn drop(&mut self) {
         self.store_lazy(crate::DiaryLogger::new());
+    }
+}
+
+impl Searchable for Entry {
+    fn get_uid(&self) -> String {
+        self.uid.clone()
+    }
+
+    fn contains_tag(&mut self, tag: &String, logger: impl Logger) -> bool {
+        let result = self.tags(logger).contains(tag);
+        self.tags = None;
+        result
     }
 }
