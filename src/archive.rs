@@ -1,5 +1,6 @@
 use lazy_db::*;
 use crate::home_dir;
+use crate::list;
 use soulog::*;
 use std::fs;
 use std::path::PathBuf;
@@ -37,8 +38,14 @@ impl Archive {
         log!((logger) Init("Writing uid and itver to archive..."));
         if_err!((logger) [Init, err => ("While writing uid: {err:?}")] retry write_database!((&database) uid = new_u64(uid)));
         if_err!((logger) [Init, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
+
+        log!((logger) Init("Initialising entry and moc containers..."));
         if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /entries::nome = new_void(())));
         if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /mocs::nome = new_void(())));
+
+        log!((logger) Init("Initialising sorted and unsorted entry containers..."));
+        if_err!((logger) [Init, err => ("While writing stack length: {err:?}")] retry write_database!((&database) /order/sorted::length = new_u16(0)));
+        if_err!((logger) [Init, err => ("While writing stack length: {err:?}")] retry write_database!((&database) /order/unsorted::length = new_u16(0)));
 
         log!((logger) Init("Successfully initialised archive '{path_string}'"));
         Self {
@@ -231,7 +238,15 @@ impl Archive {
         } else {
             let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /entries/));
             log!((logger) Commit("Detected that config file '{config_string}' is an entry"));
-            Entry::new(entry, &config_string, container, logger.hollow());
+            
+            // Add to unsorted list
+            let entry = Entry::new(entry, &config_string, container, logger.hollow());
+            log!((logger) Commit("Adding entry to unsorted stack..."));
+            list::push(
+                |file| LazyData::new_string(file, &entry.uid),
+                &if_err!((logger) [Commit, err => ("While loaded unsorted stack: {err:?}")] retry search_database!((self.database) /order/unsorted)),
+                logger.hollow(),
+            );
         }
 
         // Update itver

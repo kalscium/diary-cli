@@ -3,6 +3,7 @@ use crate::archive::Archive;
 
 pub trait Searchable {
     fn get_uid(&self) -> String;
+    #[allow(clippy::ptr_arg)]
     fn contains_tag(&mut self, tag: &String, logger: impl Logger) -> bool;
 }
 

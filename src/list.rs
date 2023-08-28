@@ -1,8 +1,6 @@
 use lazy_db::*;
 use soulog::*;
 
-use crate::search::Searchable;
-
 pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
     for (i, x) in list.iter().enumerate() {
         let data_writer = 
@@ -20,11 +18,7 @@ pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>,
 }
 
 pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
-    let length = if_err!((logger) [ListIO, err => ("While reading list legnth: {:?}", err)] retry container.read_data("length"));
-    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u16()} crash {
-        log!((logger.error) ListIO("{err:#?}") as Fatal);
-        logger.crash()
-    });
+    let length = load_length(container, logger.hollow());
 
     let data_writer = if_err!((logger) [ListIO, err => ("While pushing to list: {:?}", err)] retry container.data_writer(length.to_string()));
     if_err!((logger) [ListIO, err => ("While pushing to list: {:?}", err)] {f(data_writer)} crash {
@@ -39,11 +33,7 @@ pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: &LazyCon
 }
 
 pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> T {
-    let length = if_err!((logger) [ListIO, err => ("While reading list legnth: {:?}", err)] retry container.read_data("length"));
-    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u16()} crash {
-        log!((logger.error) ListIO("{err:#?}") as Fatal);
-        logger.crash()
-    });
+    let length = load_length(container, logger.hollow());
 
     let idx = (length - 1).to_string();
     let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] retry container.read_data(&idx));
@@ -63,13 +53,9 @@ pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyConta
 }
 
 pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> Box<[T]> {
-    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] retry container.read_data("length"));
-    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u16()} crash {
-        log!((logger.error) ListIO("{err:#?}") as Fatal);
-        logger.crash()
-    }) as usize;
+    let length = load_length(container, logger.hollow());
 
-    let mut list = Vec::<T>::with_capacity(length);
+    let mut list = Vec::<T>::with_capacity(length as usize);
 
     for i in 0..length {
         let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] retry container.read_data(i.to_string()));
@@ -81,4 +67,12 @@ pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyCont
     }
 
     list.into_boxed_slice()
+}
+
+pub fn load_length(container: &LazyContainer, mut logger: impl Logger) -> u16 {
+    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] retry container.read_data("length"));
+    if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u16()} crash {
+        log!((logger.error) ListIO("{err:#?}") as Fatal);
+        logger.crash()
+    })
 }
