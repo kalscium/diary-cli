@@ -71,8 +71,9 @@ impl Section {
         map.insert("title".into(), Value::String(self.title(logger.hollow()).clone()));
         map.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
 
-        let path = path.join(format!("section{idx}.txt"));
-        map.insert("path".into(), path.to_string_lossy().to_string().into());
+        let file_name = format!("section{idx}.txt");
+        let path = path.join(&file_name);
+        map.insert("path".into(), file_name.into());
         if_err!((logger) [Pull, err => ("While writing section as text file: {err:?}")] retry fs::write(&path, self.content(logger.hollow())));
 
         self.clear_cache();

@@ -32,7 +32,7 @@ impl Logger for DiaryLogger {
         if ErrorResponse::Retry.allowed_in(&log) && self.retry_count > 0 {
             self.retry_count -= 1;
             // wait for a bit
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(800));
             return ErrorResponse::Retry;
         };
 

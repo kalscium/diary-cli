@@ -1,9 +1,13 @@
 use soulog::*;
-use std::path::PathBuf;
+use std::{path::PathBuf, fs};
 use crate::{archive::Archive, unwrap_opt};
 
 pub fn pull(path: PathBuf, file_name: String, is_moc: bool, uid: String, mut logger: impl Logger) {
     let archive = Archive::load(logger.hollow());
+
+    if_err!((logger) {fs::create_dir_all(&path)} else(err) {
+        log!((logger) Pull("While initialising path '{}': {err:?}; ignoring error...", path.to_string_lossy()) as Inconvenience) 
+    });
     
     if is_moc {
         log!((logger) Pull("Pulling moc with uid '{uid}' from archive..."));

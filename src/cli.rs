@@ -49,7 +49,7 @@ pub enum Commands {
         is_moc: bool,
         #[arg(short, long, required=true, help="The uid of the entry or moc.")]
         uid: String,
-        #[arg(short, long, required=true, help="Specfies path of the containing folder of the config file.")]
+        #[arg(short, long, required=true, default_value=".", help="Specfies path of the containing folder of the config file.")]
         path: String,
         #[arg(short, long, default_value="config.toml", help="Specifies the name of the output config file.")]
         file_name: String,

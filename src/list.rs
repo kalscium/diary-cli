@@ -2,6 +2,8 @@ use lazy_db::*;
 use soulog::*;
 
 pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
+    if_err!((logger) [ListIO, err => ("While clearing container: {err:?}")] retry container.wipe());
+
     for (i, x) in list.iter().enumerate() {
         let data_writer = 
             if_err!((logger) [ListIO, err => ("While writing element of list: {:?}", err)] retry container.data_writer(i.to_string()));
@@ -32,8 +34,12 @@ pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: &LazyCon
     })
 }
 
-pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> T {
+pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> Option<T> {
     let length = load_length(container, logger.hollow());
+
+    if length == 0 {
+        return None;
+    }
 
     let idx = (length - 1).to_string();
     let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] retry container.read_data(&idx));
@@ -42,14 +48,16 @@ pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyConta
         logger.crash()
     });
 
-    container.remove(idx);
+    if_err!((logger) {container.remove(idx)} else(err) {
+        log!((logger) ListIO("While removing item: {err:?}; ignoring error...") as Inconvenience)
+    });
 
     if_err!((logger) [ListIO, err => ("{:?}", err)] retry {
         let data_writer = if_err!((logger) [ListIO, err => ("While writing list length: {:?}", err)] retry container.data_writer("length"));
         LazyData::new_u16(data_writer, length - 1)
     });
 
-    item
+    Some(item)
 }
 
 pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> Box<[T]> {
