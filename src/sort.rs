@@ -29,6 +29,7 @@ pub fn sort(mut logger: impl Logger) {
         logger.hollow(),
     ).into_vec();
 
+    log!((logger) Sort("Sorting unsorted entries..."));
     // main sorting code
     for usort_uid in unsorted.into_vec() {
         let mut usort = archive.get_entry(usort_uid.clone(), logger.hollow()).unwrap();
@@ -47,4 +48,18 @@ pub fn sort(mut logger: impl Logger) {
     }
 
     // Store updates
+    list::write( // store newly sorted list
+        sorted.as_ref(),
+        |file, x| LazyData::new_string(file, x),
+        &if_err!((logger) [Sort, err => ("While initing sorted list: {err:?}")] retry write_database!((archive.database()) /order/sorted)),
+        logger.hollow(),
+    );
+
+    if_err!((logger) [Sort, err => ("While wiping unsorted stack: {err:?}")] retry
+        if_err!((logger) [Sort, err => ("While wiping unsorted stack: {err:?}")] retry
+        search_database!((archive.database()) /order/unsorted)
+        ).wipe()
+    );
+
+    log!((logger) Sort("Successfully sorted entries"));
 }

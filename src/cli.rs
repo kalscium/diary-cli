@@ -54,13 +54,15 @@ pub enum Commands {
         #[arg(short, long, default_value="config.toml", help="Specifies the name of the output config file.")]
         file_name: String,
     },
-    #[command(about="Searches the archive with specified tags")]
+    #[command(about="Searches the archive with specified tags.")]
     Search {
         #[arg(short, long, help="Sets if the search is strict or not (if the item must implement all tags)")]
         strict: bool,
         #[arg(short, long, required=true, num_args=1..)]
         tags: Vec<String>,
     },
+    #[command(about="Sorts the unsorted, committed, entries.")]
+    Sort,
     #[command(about="Exports the archive as an `Obsidian.md` vault.")]
     Export {
         #[arg(short, long, num_args=1.., help="Filters out entries and mocs that don't have all these tags")]
@@ -90,6 +92,7 @@ impl Commands {
             Since { date, today: _ } => since::since_2023(date, logger),
             Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
             Search { strict, tags } => search::search_command(strict, tags, logger),
+            Sort => sort::sort(logger),
             Export { .. } => todo!(),
         }
     }
