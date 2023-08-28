@@ -84,7 +84,7 @@ impl MOC {
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [MOC, err => ("While reading from moc's notes: {err:?}")] retry this.container.read_container("notes")),
+            &if_err!((logger) [MOC, err => ("While reading from moc's notes: {err:?}")] retry this.container.child_container("notes")),
             logger
         )
     });
@@ -92,13 +92,13 @@ impl MOC {
     cache_field!(tags(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [MOC, err => ("While reading from moc's tags: {err:?}")] retry this.container.read_container("tags")),
+            &if_err!((logger) [MOC, err => ("While reading from moc's tags: {err:?}")] retry this.container.child_container("tags")),
             logger
         )
     });
 
     cache_field!(collections(this, logger) -> Box<[Collection]> {
-        let container = if_err!((logger) [MOC, err => ("While reading from moc's collections: {err:?}")] retry this.container.read_container("collections"));
+        let container = if_err!((logger) [MOC, err => ("While reading from moc's collections: {err:?}")] retry this.container.child_container("collections"));
         let length = if_err!((logger) [MOC, err => ("While reading from moc's collections' length: {err:?}")] retry container.read_data("length"));
         let length = if_err!((logger) [MOC, err => ("While reading from moc's collections' length: {err:?}")] {length.collect_u16()} crash {
             log!((logger) MOC("{err:#?}") as Fatal);
@@ -108,7 +108,7 @@ impl MOC {
 
         for i in 0..length {
             colletions.push(Collection::load_lazy(
-                if_err!((logger) [MOC, err => ("While reading moc collection {i}: {err:?}")] retry container.read_container(i.to_string()))
+                if_err!((logger) [MOC, err => ("While reading moc collection {i}: {err:?}")] retry container.child_container(i.to_string()))
             ));
         }
 

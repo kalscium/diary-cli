@@ -119,7 +119,7 @@ impl Section {
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Section, err => ("While reading from section's notes: {err:?}")] retry this.container.read_container("notes")),
+            &if_err!((logger) [Section, err => ("While reading from section's notes: {err:?}")] retry this.container.child_container("notes")),
             logger
         )
     });

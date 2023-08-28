@@ -113,7 +113,7 @@ impl Collection {
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Collection, err => ("While reading from collection's notes: {err:?}")] retry this.container.read_container("notes")),
+            &if_err!((logger) [Collection, err => ("While reading from collection's notes: {err:?}")] retry this.container.child_container("notes")),
             logger
         )
     });
@@ -125,7 +125,7 @@ impl Collection {
     cache_field!(include(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Collection, err => ("While reading from collection's included groups: {err:?}")] retry this.container.read_container("include")),
+            &if_err!((logger) [Collection, err => ("While reading from collection's included groups: {err:?}")] retry this.container.child_container("include")),
             logger
         )
     });

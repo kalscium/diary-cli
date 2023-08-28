@@ -8,7 +8,7 @@ description = "A powerful cli for documenting and keeping a diary."
 
 [dependencies]
 chrono = "0.4.26"
-lazy-db = "1.5.1"
+lazy-db = "1.5.2"
 soulog = "1.1.0"
 toml = "0.7.6"
 clap = { version = "4.3.22", features = ["derive"] }

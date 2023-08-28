@@ -259,7 +259,7 @@ impl Entry {
     cache_field!(notes(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Entry, err => ("While reading from entry's notes: {err:?}")] retry this.container.read_container("notes")),
+            &if_err!((logger) [Entry, err => ("While reading from entry's notes: {err:?}")] retry this.container.child_container("notes")),
             logger
         )
     });
@@ -267,7 +267,7 @@ impl Entry {
     cache_field!(tags(this, logger) -> Box<[String]> {
         list::read(
             |data| data.collect_string(),
-            &if_err!((logger) [Entry, err => ("While reading from entry's tags: {err:?}")] retry this.container.read_container("tags")),
+            &if_err!((logger) [Entry, err => ("While reading from entry's tags: {err:?}")] retry this.container.child_container("tags")),
             logger
         )
     });
@@ -278,7 +278,7 @@ impl Entry {
     });
 
     cache_field!(sections(this, logger) -> Box<[Section]> {
-        let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.read_container("sections"));
+        let container = if_err!((logger) [Entry, err => ("While reading from entry's sections: {err:?}")] retry this.container.child_container("sections"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] retry container.read_data("length"));
         let length = if_err!((logger) [Entry, err => ("While reading from entry's sections' length: {err:?}")] {length.collect_u16()} crash {
             log!((logger) Entry("{err:#?}") as Fatal);
@@ -288,7 +288,7 @@ impl Entry {
 
         for i in 0..length {
             sections.push(Section::load_lazy(
-                if_err!((logger) [Entry, err => ("While reading entry section {i}: {err:?}")] retry container.read_container(i.to_string()))
+                if_err!((logger) [Entry, err => ("While reading entry section {i}: {err:?}")] retry container.child_container(i.to_string()))
             ));
         }
 

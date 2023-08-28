@@ -40,8 +40,8 @@ impl Archive {
         if_err!((logger) [Init, err => ("While writing itver: {err:?}")] retry write_database!((&database) itver = new_u16(itver)));
 
         log!((logger) Init("Initialising entry and moc containers..."));
-        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /entries::nome = new_void(())));
-        if_err!((logger) [Init, err => ("While writing nome: {err:?}")] retry write_database!((&database) /mocs::nome = new_void(())));
+        if_err!((logger) [Init, err => ("While initing entries container: {err:?}")] retry write_database!((&database) /entries));
+        if_err!((logger) [Init, err => ("While initing mocs container: {err:?}")] retry write_database!((&database) /mocs));
 
         log!((logger) Init("Initialising sorted and unsorted entry containers..."));
         if_err!((logger) [Init, err => ("While writing stack length: {err:?}")] retry write_database!((&database) /order/sorted::length = new_u16(0)));
