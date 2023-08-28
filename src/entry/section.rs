@@ -132,9 +132,3 @@ impl Section {
         read_db_container!(content from Section(this.container) as collect_string with logger)
     });
 }
-
-impl Drop for Section {
-    fn drop(&mut self) {
-        self.store_lazy(crate::DiaryLogger::new());
-    }
-}

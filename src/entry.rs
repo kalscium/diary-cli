@@ -296,12 +296,6 @@ impl Entry {
     });
 }
 
-impl Drop for Entry {
-    fn drop(&mut self) {
-        self.store_lazy(crate::DiaryLogger::new());
-    }
-}
-
 impl Searchable for Entry {
     fn get_uid(&self) -> String {
         self.uid.clone()

@@ -130,9 +130,3 @@ impl Collection {
         )
     });
 }
-
-impl Drop for Collection {
-    fn drop(&mut self) {
-        self.store_lazy(crate::DiaryLogger::new());
-    }
-}

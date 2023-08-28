@@ -198,12 +198,6 @@ impl MOC {
     }
 }
 
-impl Drop for MOC {
-    fn drop(&mut self) {
-        self.store_lazy(crate::DiaryLogger::new());
-    }
-}
-
 impl Searchable for MOC {
     fn get_uid(&self) -> String {
         self.uid.clone()

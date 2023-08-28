@@ -26,7 +26,6 @@ fn pull_entry(archive: Archive, path: PathBuf, file_name: String, uid: String, m
     std::mem::drop(error_msg);
 
     let map = entry.pull(&path, logger.hollow());
-    std::mem::forget(entry);
     let contents = if_err!((logger) [Pull, err => ("While encoding entry toml: {err:?}")] retry toml::to_string_pretty(&map));
     
     let path = path.join(file_name);
@@ -39,7 +38,6 @@ fn pull_moc(archive: Archive, path: PathBuf, file_name: String, uid: String, mut
     std::mem::drop(error_msg);
 
     let map = moc.pull(logger.hollow());
-    std::mem::forget(moc);
     let contents = if_err!((logger) [Pull, err => ("While encoding moc toml: {err:?}")] retry toml::to_string_pretty(&map));
     
     let path = path.join(file_name);
