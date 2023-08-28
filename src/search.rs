@@ -55,6 +55,6 @@ pub fn search_command(strict: bool, tags: Vec<String>, mut logger: impl Logger) 
     }
 
     log!((logger) Search("Listing found entries and mocs..."));
-    log!((logger) Search("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{entry_uids:?}"))]));
-    log!((logger) Search("{}", colour_format![green("Entries"), blue(": "), none(&format!("{moc_uids:?}"))]));
+    log!((logger) Search("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:?}"))]));
+    log!((logger) Search("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:?}"))]));
 }
