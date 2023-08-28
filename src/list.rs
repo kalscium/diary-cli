@@ -1,6 +1,8 @@
 use lazy_db::*;
 use soulog::*;
 
+use crate::search::Searchable;
+
 pub fn write<T>(list: &[T], f: impl Fn(FileWrapper, &T) -> Result<(), LDBError>, container: &LazyContainer, mut logger: impl Logger) {
     for (i, x) in list.iter().enumerate() {
         let data_writer = 
@@ -34,6 +36,30 @@ pub fn push(f: impl Fn(FileWrapper) -> Result<(), LDBError>, container: &LazyCon
         let data_writer = if_err!((logger) [ListIO, err => ("While writing list length: {:?}", err)] retry container.data_writer("length"));
         LazyData::new_u16(data_writer, length + 1)
     })
+}
+
+pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> T {
+    let length = if_err!((logger) [ListIO, err => ("While reading list legnth: {:?}", err)] retry container.read_data("length"));
+    let length = if_err!((logger) [ListIO, err => ("While reading list length: {:?}", err)] {length.collect_u16()} crash {
+        log!((logger.error) ListIO("{err:#?}") as Fatal);
+        logger.crash()
+    });
+
+    let idx = (length - 1).to_string();
+    let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] retry container.read_data(&idx));
+    let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] {f(item)} crash {
+        log!((logger.error) ListIO("{err:#?}") as Fatal);
+        logger.crash()
+    });
+
+    container.remove(idx);
+
+    if_err!((logger) [ListIO, err => ("{:?}", err)] retry {
+        let data_writer = if_err!((logger) [ListIO, err => ("While writing list length: {:?}", err)] retry container.data_writer("length"));
+        LazyData::new_u16(data_writer, length - 1)
+    });
+
+    item
 }
 
 pub fn read<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyContainer, mut logger: impl Logger) -> Box<[T]> {
