@@ -12,6 +12,7 @@ pub mod sort;
 pub mod scribe;
 
 pub use logger::*;
+pub use scribe::*;
 
 pub fn home_dir() -> std::path::PathBuf {
     // Linux only; change this if you want to go cross platform

@@ -10,10 +10,15 @@ impl<T: Logger> Scribe<T> {
         Self(buffer, logger)
     }
 
+    #[inline]
     pub fn write_line(&mut self, line: &str) {
-        let mut logger = self.1.hollow();
-        if_err!((logger) [Scribe, err => ("While writing to text file: {err:?}")] retry self.0.write_all(line.as_bytes()));
+        self.write(line);
         self.new_line();
+    }
+
+    pub fn write(&mut self, text: &str) {
+        let mut logger = self.1.hollow();
+        if_err!((logger) [Scribe, err => ("While writing to text file: {err:?}")] retry self.0.write_all(text.as_bytes()));
     }
 
     #[inline]
@@ -36,3 +41,9 @@ impl<T: Logger> Drop for Scribe<T> {
     fn drop(&mut self) { self.flush() }
 }
 
+#[macro_export]
+macro_rules! scribe_write {
+    (($scribe:ident) $($text:expr),* $(,)?) => {{
+        $($scribe.write($text);)*
+    }}
+}

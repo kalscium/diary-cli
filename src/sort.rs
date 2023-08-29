@@ -25,7 +25,7 @@ pub fn sort(mut logger: impl Logger) {
 
     let mut sorted = list::read(
         |x| x.collect_string(),
-        &if_err!((logger) [Sort, err => ("While reading unsorted stack length: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
+        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
         logger.hollow(),
     ).into_vec();
 
@@ -67,4 +67,20 @@ pub fn sort(mut logger: impl Logger) {
     );
 
     log!((logger) Sort("Successfully sorted entries"));
+}
+
+pub fn sort_uids(uids: &[String], mut logger: impl Logger) -> Box<[String]> {
+    // load archive & sort if sorting is needed
+    let archive = Archive::load(logger.hollow());
+    sort(logger.hollow());
+
+    let mut sorted = list::read(
+        |x| x.collect_string(),
+        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
+        logger.hollow(),
+    ).into_vec();
+    
+    // remove unspecified
+    sorted.retain(|uid: &String| uids.contains(uid));
+    sorted.into_boxed_slice()
 }

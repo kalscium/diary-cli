@@ -67,6 +67,8 @@ pub enum Commands {
     Export {
         #[arg(short, long, num_args=1.., help="Filters out entries and mocs that don't have all these tags")]
         tags: Option<Vec<String>>,
+        #[arg(short, long, requires="tags", help="Determines if the tags filter strictly or not")]
+        strict: bool,
         #[arg(short, long, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
         path: String,
     }
@@ -93,7 +95,7 @@ impl Commands {
             Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
             Search { strict, tags } => search::search_command(strict, tags, logger),
             Sort => sort::sort(logger),
-            Export { .. } => todo!(),
+            Export { strict, tags, path } => export::export_md(strict, tags, path, logger.hollow()),
         }
     }
 }
