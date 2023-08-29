@@ -1,6 +1,6 @@
 [package]
 name = "diary-cli"
-version = "1.7.5-beta"
+version = "1.7.6-beta"
 edition = "2021"
 description = "A powerful cli for documenting and keeping a diary."
 

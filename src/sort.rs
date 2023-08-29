@@ -76,7 +76,7 @@ pub fn sort_uids(uids: &[String], mut logger: impl Logger) -> Box<[String]> {
 
     let mut sorted = list::read(
         |x| x.collect_string(),
-        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
+        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
         logger.hollow(),
     ).into_vec();
     

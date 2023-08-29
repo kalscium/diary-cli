@@ -93,8 +93,9 @@ fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut 
 
     uids.into_vec().into_iter()
         .map(|x| archive.get_entry(x, logger.hollow()).unwrap())
-        .for_each(|mut entry| {
-            scribe_write!((scribe) "- \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!(" `notes: {:?}`\n", entry.notes(logger.hollow())));
+        .enumerate()
+        .for_each(|(i, mut entry)| {
+            scribe_write!((scribe) &(i + 1).to_string(), ". \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!(" `notes: {:?}`\n", entry.notes(logger.hollow())));
             entry.clear_cache();
         });
 }
