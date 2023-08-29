@@ -217,7 +217,7 @@ impl Archive {
         log!((logger) Commit("Parsing toml at '{}'", config.to_string_lossy()));
         let entry = if_err!((logger) [Commit, err => ("While reading the entry config file: {err:?}")] retry std::fs::read_to_string(config));
         let entry = if_err!((logger) [Commit, err => ("While parsing entry config toml: {err:?}")] {entry.parse::<toml::Table>()} crash {
-            log!((logger) Commit("{err:#?}") as Fatal);
+            log!((logger.error) Commit("{err:#?}") as Fatal);
             logger.crash()
         });
 
@@ -291,16 +291,16 @@ impl Archive {
         let path = self.database.path().join("entries");
 
         if !path.is_dir() {
-            log!((logger) Archive("Path '{}' does not exist", path.to_string_lossy()) as Fatal);
-            return logger.crash();
+            log!((logger.error) Entries("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            return Vec::with_capacity(0);
         }
 
         let mut logger1 = logger.hollow();
         let logger2 = logger.hollow();
-        let dir = if_err!((logger) [Archive, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
+        let dir = if_err!((logger) [Entries, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
         dir.into_iter()
-            .map(|x| if_err!((logger) [Archive, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
-            .filter(|x| if_err!((logger1) [Archive, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
+            .map(|x| if_err!((logger) [Entries, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
+            .filter(|x| if_err!((logger1) [Entries, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
             .map(|x| self.get_entry(x.file_name().to_string_lossy().to_string(), logger2.hollow()).unwrap())
             .collect()
     }
@@ -309,16 +309,16 @@ impl Archive {
         let path = self.database.path().join("mocs");
 
         if !path.is_dir() {
-            log!((logger) Archive("Path '{}' does not exist", path.to_string_lossy()) as Fatal);
-            return logger.crash();
+            log!((logger.error) MOCs("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            return Vec::with_capacity(0);
         }
 
         let mut logger1 = logger.hollow();
         let logger2 = logger.hollow();
-        let dir = if_err!((logger) [Archive, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
+        let dir = if_err!((logger) [MOCs, err => ("While reading directory {}'s contents: {err:?}", path.to_string_lossy())] retry fs::read_dir(&path));
         dir.into_iter()
-            .map(|x| if_err!((logger) [Archive, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
-            .filter(|x| if_err!((logger1) [Archive, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
+            .map(|x| if_err!((logger) [MOCs, err => ("While reading dir element: {err:?}")] {x} crash logger.crash()))
+            .filter(|x| if_err!((logger1) [MOCs, err => ("While reading dir element: {err:?}")] {x.file_type()} crash logger1.crash()).is_dir())
             .map(|x| self.get_moc(x.file_name().to_string_lossy().to_string(), logger2.hollow()).unwrap())
             .collect()
     }
