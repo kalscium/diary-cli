@@ -66,7 +66,7 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
     scribe_tags(moc.tags(logger.hollow()), &mut scribe);
     scribe_write!((scribe) "# ", moc.title(logger.hollow()), "\n");
     scribe.write_line("---");
-    scribe_write!((scribe) "**Description:** ", moc.description(logger.hollow()));
+    scribe_write!((scribe) "**Description:** ", moc.description(logger.hollow()), "\n");
 
     // Notes
     scribe.write_line("## Notes");
@@ -92,7 +92,7 @@ fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut 
     uids.into_iter()
         .map(|x| archive.get_entry(x, logger.hollow()).unwrap())
         .for_each(|mut entry| {
-            scribe_write!((scribe) "- \\[", entry.title(logger.hollow()), "\\] ", entry.description(logger.hollow()), &format!("`notes: {:?}`\n", entry.notes));
+            scribe_write!((scribe) "- \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!("`notes: {:?}`\n", entry.notes));
             entry.clear_cache();
         });
 }
