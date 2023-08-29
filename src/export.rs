@@ -1,5 +1,5 @@
 use std::path::Path;
-use crate::{entry::{Entry, Section}, Scribe, scribe_write, archive::Archive, search, moc::{MOC, Collection}};
+use crate::{entry::{Entry, Section}, Scribe, scribe_write, archive::Archive, search, moc::{MOC, Collection}, sort::sort_uids};
 use soulog::*;
 
 pub fn export_md(strict: bool, tags: Option<Vec<String>>, path: String, mut logger: impl Logger) {
@@ -89,10 +89,12 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
 fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut Collection, archive: &Archive, logger: impl Logger) {
     scribe_write!((scribe) "## ", collection.title(logger.hollow()), "\n");
     let uids = search::search_strict(collection.include(logger.hollow()), archive.list_entries(logger.hollow()), logger.hollow());
-    uids.into_iter()
+    let uids = sort_uids(&uids, logger.hollow()); // Sorting stuff
+
+    uids.into_vec().into_iter()
         .map(|x| archive.get_entry(x, logger.hollow()).unwrap())
         .for_each(|mut entry| {
-            scribe_write!((scribe) "- \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!("`notes: {:?}`\n", entry.notes));
+            scribe_write!((scribe) "- \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!(" `notes: {:?}`\n", entry.notes(logger.hollow())));
             entry.clear_cache();
         });
 }
