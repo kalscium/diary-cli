@@ -28,7 +28,7 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
     scribe_tags(entry.tags(logger.hollow()), &mut scribe);
     scribe_write!((scribe) "# ", entry.title(logger.hollow()), "\n");
     scribe.write_line("---");
-    scribe_write!((scribe) "**Description:** ", entry.title(logger.hollow()), "\n");
+    scribe_write!((scribe) "**Description:** ", entry.description(logger.hollow()), "\n");
 
     // Notes
     scribe.write_line("## Notes");
