@@ -9,6 +9,7 @@ pub mod pull;
 pub mod export;
 pub mod search;
 pub mod sort;
+pub mod scribe;
 
 pub use logger::*;
 
