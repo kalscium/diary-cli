@@ -1,5 +1,5 @@
 use soulog::*;
-use crate::archive::Archive;
+use crate::{archive::Archive, entry::Entry, moc::MOC};
 
 pub trait Searchable {
     fn get_uid(&self) -> String;
@@ -37,25 +37,63 @@ pub fn search<T: Searchable>(tags: &[String], items: Vec<T>, logger: impl Logger
     result
 }
 
-pub fn search_command(strict: bool, tags: Vec<String>, mut logger: impl Logger) {
+pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: Option<Vec<String>>, mut logger: impl Logger) {
     let archive = Archive::load(logger.hollow());
 
-    let entries = archive.list_entries(logger.hollow());
-    let mocs = archive.list_mocs(logger.hollow());
+    let mut entries = archive.list_entries(logger.hollow());
+    let mut mocs = archive.list_mocs(logger.hollow());
+
+    let filter = match filter {
+        Some(x) => x,
+        None => {
+            log!((logger) List("Listing selected items..."));
+
+            let tags = get_unique_tags(&mut entries, &mut mocs, logger.hollow());
+            log!((logger) List("{}", colour_format![green("Tags"), blue(": "), none(&format!("{tags:#?}"))]));
+
+            std::mem::drop(tags);
+
+            let entry_uids: Vec<String> = entries.into_iter().map(|e| e.uid).collect();
+            let moc_uids: Vec<String> = mocs.into_iter().map(|m| m.uid).collect();
+
+            if show_entries {
+                log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:#?}"))]));
+            } if show_mocs {
+                log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:#?}"))]));
+            } return;
+        }
+    };
+
     let entry_uids: Vec<String>;
     let moc_uids: Vec<String>;
 
     if strict {
-        log!((logger) Search("Searching strictly with tags {tags:?} in mocs and entries..."));
-        entry_uids = search_strict(&tags, entries, logger.hollow());
-        moc_uids = search_strict(&tags, mocs, logger.hollow());
+        log!((logger) List("Searching strictly with tags {filter:?} in mocs and entries..."));
+        entry_uids = search_strict(&filter, entries, logger.hollow());
+        moc_uids = search_strict(&filter, mocs, logger.hollow());
     } else {
-        log!((logger) Search("Searching with tags {tags:?} in mocs and entries..."));
-        entry_uids = search(&tags, entries, logger.hollow());
-        moc_uids = search(&tags, mocs, logger.hollow());
+        log!((logger) List("Searching with tags {filter:?} in mocs and entries..."));
+        entry_uids = search(&filter, entries, logger.hollow());
+        moc_uids = search(&filter, mocs, logger.hollow());
     }
 
-    log!((logger) Search("Listing found entries and mocs..."));
-    log!((logger) Search("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:?}"))]));
-    log!((logger) Search("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:?}"))]));
+    log!((logger) List("Listing found entries and mocs..."));
+
+    log!((logger) List("{}", colour_format![green("Tags"), blue(": "), none(&format!("{filter:?}"))]));
+
+    if show_entries {
+        log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:?}"))]));
+    } if show_mocs {
+        log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:?}"))]));
+    }
+}
+
+use std::collections::HashSet;
+fn get_unique_tags<'a>(entries: &'a mut [Entry], mocs: &'a mut [MOC], logger: impl Logger) -> HashSet<&'a String> {
+    let mut tags = HashSet::new();
+
+    tags.extend(entries.iter_mut().flat_map(|x| x.tags(logger.hollow()).iter()));
+    tags.extend(mocs.iter_mut().flat_map(|x| x.tags(logger.hollow()).iter()));
+
+    tags
 }

@@ -55,11 +55,15 @@ pub enum Commands {
         file_name: String,
     },
     #[command(about="Searches the archive with specified tags.")]
-    Search {
-        #[arg(short, long, help="Sets if the search is strict or not (if the item must implement all tags)")]
+    List {
+        #[arg(short='f', long="filter", num_args=1.., help="Filters out the list accordding to specified tags")]
+        tags: Option<Vec<String>>,
+        #[arg(short, long, requires="tags", help="Sets if the search is strict or not (if the item must implement all tags)")]
         strict: bool,
-        #[arg(short, long, required=true, num_args=1..)]
-        tags: Vec<String>,
+        #[arg(short='e', long, help="Sets if you want to show entries")]
+        show_entries: bool,
+        #[arg(short='m', long, help="Sets if you want to show mocs")]
+        show_mocs: bool,
     },
     #[command(about="Sorts the unsorted, committed, entries.")]
     Sort,
@@ -93,7 +97,7 @@ impl Commands {
             },
             Since { date, today: _ } => since::since_2023(date, logger),
             Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
-            Search { strict, tags } => search::search_command(strict, tags, logger),
+            List { strict, tags, show_entries, show_mocs } => search::list_command(strict, show_mocs, show_entries, tags, logger),
             Sort => sort::sort(logger),
             Export { strict, tags, path } => export::export_md(strict, tags, path, logger.hollow()),
         }
