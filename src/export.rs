@@ -89,9 +89,11 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
 fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut Collection, archive: &Archive, logger: impl Logger) {
     scribe_write!((scribe) "## ", collection.title(logger.hollow()), "\n");
 
-    let moc_uids = search::search_strict(collection.include(logger.hollow()), archive.list_mocs(logger.hollow()), logger.hollow());
-    let mut entry_uids = search::search_strict(collection.include(logger.hollow()), archive.list_entries(logger.hollow()), logger.hollow());
+    let tags = collection.include(logger.hollow());
+    let moc_uids = search::search_strict(tags, archive.list_mocs(logger.hollow()), logger.hollow());
+    let mut entry_uids = search::search_strict(tags, archive.list_entries(logger.hollow()), logger.hollow());
     entry_uids = sort_uids(&entry_uids, logger.hollow()).to_vec(); // Sorting stuff
+    println!("{entry_uids:?}");
 
     moc_uids.into_iter()
         .map(|x| archive.get_moc(x, logger.hollow()).unwrap())

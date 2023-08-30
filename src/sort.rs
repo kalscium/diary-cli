@@ -25,7 +25,7 @@ pub fn sort(mut logger: impl Logger) {
 
     let mut sorted = list::read(
         |x| x.collect_string(),
-        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
+        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
         logger.hollow(),
     ).into_vec();
 
@@ -62,7 +62,7 @@ pub fn sort(mut logger: impl Logger) {
     list::write(
         &[],
         |file, x: &String| LazyData::new_string(file, x),
-        &if_err!((logger) [Sort, err => ("While initing sorted list: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
+        &if_err!((logger) [Sort, err => ("While initing unsorted list: {err:?}")] retry search_database!((archive.database()) /order/unsorted)),
         logger.hollow()
     );
 
@@ -74,13 +74,12 @@ pub fn sort_uids(uids: &[String], mut logger: impl Logger) -> Box<[String]> {
     let archive = Archive::load(logger.hollow());
     sort(logger.hollow());
 
-    let mut sorted = list::read(
+    let sorted = list::read(
         |x| x.collect_string(),
         &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
         logger.hollow(),
     ).into_vec();
     
     // remove unspecified
-    sorted.retain(|uid: &String| uids.contains(uid));
-    sorted.into_boxed_slice()
+    sorted.into_iter().filter(|x| uids.contains(x)).collect()
 }
