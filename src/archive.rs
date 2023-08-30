@@ -223,8 +223,8 @@ impl Archive {
 
         
         // Checks if it is a moc
-        let is_moc = if let Some(x) = entry.get("is_moc") {
-            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`moc` attribute of config file '{config_string}' must be boolean"))
+        let is_moc = if let Some(x) = entry.get("is-moc") {
+            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`is-moc` attribute of config file '{config_string}' must be boolean"))
         } else { false };
         
         if is_moc {

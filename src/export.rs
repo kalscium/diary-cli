@@ -88,10 +88,20 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
 
 fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut Collection, archive: &Archive, logger: impl Logger) {
     scribe_write!((scribe) "## ", collection.title(logger.hollow()), "\n");
-    let uids = search::search_strict(collection.include(logger.hollow()), archive.list_entries(logger.hollow()), logger.hollow());
-    let uids = sort_uids(&uids, logger.hollow()); // Sorting stuff
 
-    uids.into_vec().into_iter()
+    let moc_uids = search::search_strict(collection.include(logger.hollow()), archive.list_mocs(logger.hollow()), logger.hollow());
+    let mut entry_uids = search::search_strict(collection.include(logger.hollow()), archive.list_entries(logger.hollow()), logger.hollow());
+    entry_uids = sort_uids(&entry_uids, logger.hollow()).to_vec(); // Sorting stuff
+
+    moc_uids.into_iter()
+        .map(|x| archive.get_moc(x, logger.hollow()).unwrap())
+        .enumerate()
+        .for_each(|(i, mut entry)| {
+            scribe_write!((scribe) &(i + 1).to_string(), ". \\[[", entry.title(logger.hollow()), "](", &entry.uid, ")\\] ", entry.description(logger.hollow()), &format!(" `notes: {:?}`\n", entry.notes(logger.hollow())));
+            entry.clear_cache();
+        });
+
+    entry_uids.into_iter()
         .map(|x| archive.get_entry(x, logger.hollow()).unwrap())
         .enumerate()
         .for_each(|(i, mut entry)| {
