@@ -68,7 +68,15 @@ macro_rules! get {
         let obj = unwrap_opt!(($table.get(key)) with $logger, format: Entry("Entry '{0}' must have '{key}' attribute", $entry));
 
         unwrap_opt!((obj.$func()) with $logger, format: Entry("Entry '{0}'s '{key}' attribute must be of correct type", $entry))
-    }}
+    }};
+
+    ($var:ident = $key:ident at $entry:ident from $table:ident as $func:ident with $logger:ident or $default:expr) => {
+        let key = stringify!($key);
+        let default = $default;
+        let $var = $table.get(key)
+            .map(|x| unwrap_opt!((x.$func()) with $logger, format: Entry("Entry '{0}'s '{key}' attribute must be of the correct type", $entry)))
+            .unwrap_or(&default);
+    };
 }
 
 pub struct Entry {
@@ -92,7 +100,7 @@ impl Entry {
 
         let title = get!(title at entry_path from entry_table as as_str with logger).to_string();
         let description = get!(description at entry_path from entry_table as as_str with logger).to_string();
-        let raw_notes = get!(notes at entry_path from entry_table as as_array with logger);
+        get!(raw_notes = notes at entry_path from entry_table as as_array with logger or Vec::<toml::Value>::with_capacity(0));
         let raw_tags = get!(tags at entry_path from entry_table as as_array with logger);
         let raw_sections = get!(section at entry_path from table as as_array with logger);
 

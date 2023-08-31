@@ -1,6 +1,7 @@
 use lazy_db::*;
 use crate::home_dir;
 use crate::list;
+use crate::unwrap_opt;
 use soulog::*;
 use std::fs;
 use std::path::PathBuf;
@@ -223,9 +224,9 @@ impl Archive {
 
         
         // Checks if it is a moc
-        let is_moc = if let Some(x) = entry.get("is-moc") {
-            crate::unwrap_opt!((x.as_bool()) with logger, format: Commit("`is-moc` attribute of config file '{config_string}' must be boolean"))
-        } else { false };
+        let is_moc = entry.get("is-moc")
+            .map(|x| unwrap_opt!((x.as_bool()) with logger, format: Commit("`is-moc` attribute of config file '{config_string}' must be boolean")))
+            .unwrap_or(false);
         
         if is_moc {
             let container = if_err!((logger) [Commit, err => ("While loading archive as container: {err:?}")] retry search_database!((self.database) /mocs/));

@@ -9,15 +9,15 @@ pub fn export_md(strict: bool, tags: Option<Vec<String>>, path: String, mut logg
     // Get entries and mocs
     let mut entries = match &tags {
         Some(x) => 
-            (if strict { search::search(&x, archive.list_entries(logger.hollow()), logger.hollow()) }
-            else { search::search_strict(&x, archive.list_entries(logger.hollow()), logger.hollow()) })
+            (if strict { search::search(x, archive.list_entries(logger.hollow()), logger.hollow()) }
+            else { search::search_strict(x, archive.list_entries(logger.hollow()), logger.hollow()) })
                 .into_iter().map(|x| archive.get_entry(x, logger.hollow()).unwrap()).collect(),
         None => archive.list_entries(logger.hollow()),
     };
     let mut mocs = match &tags {
         Some(x) => 
-            (if strict { search::search(&x, archive.list_mocs(logger.hollow()), logger.hollow()) }
-            else { search::search_strict(&x, archive.list_mocs(logger.hollow()), logger.hollow()) })
+            (if strict { search::search(x, archive.list_mocs(logger.hollow()), logger.hollow()) }
+            else { search::search_strict(x, archive.list_mocs(logger.hollow()), logger.hollow()) })
                 .into_iter().map(|x| archive.get_moc(x, logger.hollow()).unwrap()).collect(),
         None => archive.list_mocs(logger.hollow()),
     };
@@ -81,7 +81,7 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
     scribe.write_line("---");
 
     // Collections
-    moc.collections(logger.hollow()).iter_mut().for_each(|x| export_collection_content(&mut scribe, x, &archive, logger.hollow()));
+    moc.collections(logger.hollow()).iter_mut().for_each(|x| export_collection_content(&mut scribe, x, archive, logger.hollow()));
 
     moc.clear_cache();
 }
@@ -93,7 +93,6 @@ fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut 
     let moc_uids = search::search_strict(tags, archive.list_mocs(logger.hollow()), logger.hollow());
     let mut entry_uids = search::search_strict(tags, archive.list_entries(logger.hollow()), logger.hollow());
     entry_uids = sort_uids(&entry_uids, logger.hollow()).to_vec(); // Sorting stuff
-    println!("{entry_uids:?}");
 
     moc_uids.into_iter()
         .map(|x| archive.get_moc(x, logger.hollow()).unwrap())
@@ -114,7 +113,7 @@ fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut 
 
 fn export_section_content(scribe: &mut Scribe<impl Logger>, section: &mut Section, logger: impl Logger) {
     scribe_write!((scribe) "### ", section.title(logger.hollow()), "\n");
-    let content = section.content(logger.hollow()).trim_end_matches('\n').split("\n");
+    let content = section.content(logger.hollow()).trim_end_matches('\n').split('\n');
     content.for_each(|x| {
         scribe_write!((scribe) "> ", x, "\n");
     });

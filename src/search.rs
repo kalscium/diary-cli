@@ -58,7 +58,9 @@ pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: O
 
             if show_entries {
                 log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:#?}"))]));
-            } if show_mocs {
+            }
+            
+            if show_mocs {
                 log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:#?}"))]));
             } return;
         }
@@ -83,7 +85,9 @@ pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: O
 
     if show_entries {
         log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:?}"))]));
-    } if show_mocs {
+    }
+    
+    if show_mocs {
         log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:?}"))]));
     }
 }

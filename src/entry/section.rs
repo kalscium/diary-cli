@@ -13,7 +13,15 @@ macro_rules! get {
         let obj = unwrap_opt!(($table.get(key)) with $logger, format: Section("Entry '{0}', section {1} must have '{key}' attribute", $entry, $idx));
 
         unwrap_opt!((obj.$func()) with $logger, format: Section("Entry '{0}', section {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
-    }}
+    }};
+
+    ($var:ident = $key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident or $default:expr) => {
+        let key = stringify!($key);
+        let default = $default;
+        let $var = $table.get(key)
+            .map(|x| unwrap_opt!((x.$func()) with $logger, format: Entry("Entry '{0}', section {1}'s '{key}' attribute must be of the correct type", $entry, $idx)))
+            .unwrap_or(&default);
+    };
 }
 
 pub struct Section {
@@ -30,17 +38,22 @@ impl Section {
         // Get the basic needed data
         log!((logger) Section("Reading section's data..."));
         let title = get!(title at (entry, idx) from table as as_str with logger).to_string();
-        let path = get!(path at (entry, idx) from table as as_str with logger).to_string();
-        let raw_notes = get!(notes at (entry, idx) from table as as_array with logger);
+        get!(raw_notes = notes at (entry, idx) from table as as_array with logger or Vec::<toml::Value>::with_capacity(0));
 
-        log!((logger) Section("Checking if path specified in the section is valid..."));
-        // Check if path exists
-        if !Path::new(&path).exists() {
-            log!((logger.error) Section("Path '{path}' specified in entry '{entry}', section {idx} does not exist") as Fatal);
-            return logger.crash();
-        };
-
-        let content = if_err!((logger) [Section, err => ("While reading entry '{entry}', section {idx}'s path contents: {err:?}")] retry fs::read_to_string(&path));
+        // Get contents
+        let content = table.get("path")
+            .map(|x| {
+                let path = unwrap_opt!((x.as_str()) with logger, format: Entry("Entry '{entry}', section {idx}'s 'path' attribute must be of the correct type"));
+                log!((logger) Section("Checking if path specified in the section is valid..."));
+                // Check if path exists
+                if !Path::new(path).exists() {
+                    log!((logger.error) Section("Path '{path}' specified in entry '{entry}', section {idx} does not exist") as Fatal);
+                    return logger.crash();
+                };
+                if_err!((logger) [Section, err => ("While reading entry '{entry}', section {idx}'s path contents: {err:?}")] retry fs::read_to_string(path))
+            }).unwrap_or_else(|| {
+                get!(contents at (entry, idx) from table as as_str with logger).to_string()
+            });
 
         // Parse notes
         log!((logger) Section("Parsing section's notes"));
