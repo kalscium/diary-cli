@@ -181,7 +181,7 @@ impl MOC {
         moc.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
         moc.insert("tags".into(), self.tags(logger.hollow()).to_vec().into());
         map.insert("moc".into(), moc.into());
-        map.insert("is_moc".into(), true.into());
+        map.insert("is-moc".into(), true.into());
 
         self.clear_cache();
 

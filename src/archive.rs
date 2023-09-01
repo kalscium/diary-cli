@@ -262,7 +262,17 @@ impl Archive {
         &self.database
     }
 
+    #[inline]
+    pub fn database_exists(&self, path: impl AsRef<Path>) -> bool {
+        self.database().path().join(path).exists()
+    }
+
     pub fn get_entry(&self, uid: String, mut logger: impl Logger) -> Option<Entry> {
+        if !self.database_exists(format!("entries/{uid}")) {
+            log!((logger.error) Archive("Entry of uid `{uid}` does not exist") as Fatal);
+            return logger.crash();
+        }
+
         match search_database!((self.database) /entries/(&uid)) {
             Ok(x) => Some(Entry::load_lazy(uid, x)),
             Err(err) => match err {
@@ -276,6 +286,11 @@ impl Archive {
     }
 
     pub fn get_moc(&self, uid: String, mut logger: impl Logger) -> Option<MOC> {
+        if !self.database_exists(format!("mocs/{uid}")) {
+            log!((logger.error) Archive("Moc of uid `{uid}` does not exist") as Fatal);
+            return logger.crash();
+        }
+
         match search_database!((self.database) /mocs/(&uid)) {
             Ok(x) => Some(MOC::load_lazy(uid, x)),
             Err(err) => match err {
