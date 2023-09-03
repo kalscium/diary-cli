@@ -156,7 +156,7 @@ impl Entry {
         this
     }
 
-    pub fn pull(&mut self, path: &Path, logger: impl Logger) -> Table {
+    pub fn pull(&mut self, path: &Path, one_file: bool, logger: impl Logger) -> Table {
         let mut map = Table::new();
         let mut entry = Table::new();
 
@@ -174,7 +174,7 @@ impl Entry {
         map.insert("section".into(), self.sections(logger.hollow())
             .iter_mut()
             .enumerate()
-            .map(|(i, x)| x.pull(i as u8, path, logger.hollow()))
+            .map(|(i, x)| x.pull(i as u8, path, one_file, logger.hollow()))
             .collect::<Vec<Table>>()
             .into()
         );

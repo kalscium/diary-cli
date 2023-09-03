@@ -77,17 +77,21 @@ impl Section {
         this
     }
 
-    pub fn pull(&mut self, idx: u8, path: &Path, mut logger: impl Logger) -> Table {
+    pub fn pull(&mut self, idx: u8, path: &Path, one_file: bool, mut logger: impl Logger) -> Table {
         let mut map = Table::new();
 
         // Insert title and notes
         map.insert("title".into(), Value::String(self.title(logger.hollow()).clone()));
         map.insert("notes".into(), self.notes(logger.hollow()).to_vec().into());
 
-        let file_name = format!("section{idx}.txt");
-        let path = path.join(&file_name);
-        map.insert("path".into(), file_name.into());
-        if_err!((logger) [Pull, err => ("While writing section as text file: {err:?}")] retry fs::write(&path, self.content(logger.hollow())));
+        if one_file {
+            map.insert("contents".into(), Value::String(self.content(logger.hollow()).clone()));
+        } else {
+            let file_name = format!("section{idx}.txt");
+            let path = path.join(&file_name);
+            map.insert("path".into(), file_name.into());
+            if_err!((logger) [Pull, err => ("While writing section as text file: {err:?}")] retry fs::write(&path, self.content(logger.hollow())));
+        }
 
         self.clear_cache();
 

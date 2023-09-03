@@ -49,6 +49,8 @@ pub enum Commands {
         is_moc: bool,
         #[arg(short, long, required=true, help="The uid of the entry or moc.")]
         uid: String,
+        #[arg(short='1', long, help="Specifies if you want it all in one file.")]
+        one_file: bool,
         #[arg(short, long, default_value=".", help="Specfies path of the containing folder of the config file.")]
         path: String,
         #[arg(short, long, default_value="config.toml", help="Specifies the name of the output config file.")]
@@ -96,7 +98,7 @@ impl Commands {
                 }
             },
             Since { date, today: _ } => since::since_2023(date, logger),
-            Pull { is_moc, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, logger),
+            Pull { is_moc, one_file, uid, path, file_name } => pull::pull(std::path::PathBuf::from(path), file_name, is_moc, uid, one_file, logger),
             List { strict, tags, show_entries, show_mocs } => search::list_command(strict, show_mocs, show_entries, tags, logger),
             Sort => sort::sort(logger),
             Export { strict, tags, path } => export::export_md(strict, tags, path, logger.hollow()),
