@@ -47,7 +47,7 @@ pub enum Commands {
     Pull {
         #[arg(short='m', long, help="Specifies if it is a moc or not (otherwise it is an entry).")]
         is_moc: bool,
-        #[arg(short, long, required=true, help="The uid of the entry or moc.")]
+        #[arg(index=1, required=true, help="The uid of the entry or moc.")]
         uid: String,
         #[arg(short='1', long, help="Specifies if you want it all in one file.")]
         one_file: bool,
@@ -75,9 +75,16 @@ pub enum Commands {
         tags: Option<Vec<String>>,
         #[arg(short, long, requires="tags", help="Determines if the tags filter strictly or not")]
         strict: bool,
-        #[arg(short, long, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
+        #[arg(index=1, required=true, help="The path the `Obsidian.md` vault is going to be placed")]
         path: String,
-    }
+    },
+    #[command(about="Lists the attributes about an entry or moc.")]
+    About {
+        #[arg(short='m', long, help="Determines if it is a moc or not")]
+        is_moc: bool,
+        #[arg(index=1, required=true, help="The uid of the entry or moc")]
+        uid: String,
+    },
 }
 
 impl Commands {
@@ -102,6 +109,7 @@ impl Commands {
             List { strict, tags, show_entries, show_mocs } => search::list_command(strict, show_mocs, show_entries, tags, logger),
             Sort => sort::sort(logger),
             Export { strict, tags, path } => export::export_md(strict, tags, path, logger.hollow()),
+            About { is_moc, uid } => about::about(is_moc, uid, logger)
         }
     }
 }
