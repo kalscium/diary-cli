@@ -35,7 +35,8 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
     let mut scribe = Scribe::new(path.join(&entry.uid).with_extension("md"), logger.hollow());
 
     // Tags, title and description
-    scribe_tags(entry.tags(logger.hollow()), &mut scribe);
+    let date = entry.date(logger.hollow()).clone();
+    scribe_tags_n_date(entry.tags(logger.hollow()), &date, &mut scribe);
     scribe_write!((scribe) "# ", entry.title(logger.hollow()), "\n");
     scribe.write_line("---");
     scribe_write!((scribe) "**Description:** ", entry.description(logger.hollow()), "\n");
@@ -122,8 +123,16 @@ fn export_section_content(scribe: &mut Scribe<impl Logger>, section: &mut Sectio
 
 fn scribe_tags(tags: &[String], scribe: &mut Scribe<impl Logger>) {
     scribe.write_line("---");
-    scribe.write("tags: diary-cli");
-    tags.iter().for_each(|x| scribe_write!((scribe) ", ", x));
+    scribe.write("tags:\n\t- diary-cli\n");
+    tags.iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
     scribe.new_line();
+    scribe.write_line("---");
+}
+
+fn scribe_tags_n_date(tags: &[String], date: &[u16; 3], scribe: &mut Scribe<impl Logger>) {
+    scribe.write_line("---");
+    scribe.write("tags:\n  - obsidian-md\n  - diary-cli\n");
+    tags.iter().for_each(|x| scribe_write!((scribe) "  - ", x, "\n"));
+    scribe.write(&format!("date: {0}-{1}-{2}\n", date[2], date[1], date[0]));
     scribe.write_line("---");
 }
