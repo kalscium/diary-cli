@@ -27,7 +27,7 @@ pub fn export_md(strict: bool, tags: Option<Vec<String>>, path: String, mut logg
     entries.iter_mut().for_each(|x| export_entry(path, x, logger.hollow()));
     mocs.iter_mut().for_each(|x| export_moc(path, x, &archive, logger.hollow()));
 
-    log!((logger) Export("Successfully exported all specified items"));
+    log!((logger.vital) Export("Successfully exported all specified items") as Log);
 }
 
 pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {

@@ -1,12 +1,15 @@
 use clap::*;
 use crate::archive::Archive;
-use crate::logger::DiaryLogger;
 use crate::*;
 use soulog::*;
+
+pub static mut VERBOSE: bool = false;
 
 #[derive(Parser)]
 #[command(author, version, about)]
 pub struct Cli {
+    #[arg(short, long, help="Specifies if you want it to log everything it does")]
+    pub verbose: bool,
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -26,7 +29,7 @@ pub enum Commands {
     },
     #[command(about="Backs up the archive")]
     Backup {
-        #[arg(short, long, required=false, help="Specifies the path that you want the backup file to be generated.")]
+        #[arg(index=1, required=false, help="Specifies the path that you want the backup file to be generated.")]
         out_path: Option<String>,
     },
     #[command(about="Loads a backed up archive")]
@@ -90,7 +93,7 @@ pub enum Commands {
 impl Commands {
     pub fn execute(self) {
         use Commands::*;
-        let logger = DiaryLogger::new();
+        let logger = DynamicLogger::new();
         match self {
             Test => println!("Hello, world!"),
             Init => {Archive::init(logger);},
@@ -116,5 +119,6 @@ impl Commands {
 
 pub fn run() {
     let args = Cli::parse();
+    unsafe { VERBOSE = args.verbose };
     args.command.execute();
 }

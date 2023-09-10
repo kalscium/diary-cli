@@ -49,7 +49,7 @@ pub fn pop<T>(f: impl Fn(LazyData) -> Result<T, LDBError>, container: &LazyConta
     });
 
     if_err!((logger) {container.remove(idx)} else(err) {
-        log!((logger) ListIO("While removing item: {err:?}; ignoring error...") as Inconvenience)
+        log!((logger.vital) ListIO("While removing item: {err:?}; ignoring error...") as Inconvenience)
     });
 
     if_err!((logger) [ListIO, err => ("{:?}", err)] retry {

@@ -19,7 +19,7 @@ pub fn sort(mut logger: impl Logger) {
     );
 
     if unsorted.len() == 0 {
-        log!((logger.error) Sort("No unsorted items on unsorted stack; doing nothing") as Inconvenience);
+        log!((logger.verbose) Sort("No unsorted items on unsorted stack; doing nothing") as Inconvenience);
         return;
     }
 
@@ -66,20 +66,24 @@ pub fn sort(mut logger: impl Logger) {
         logger.hollow()
     );
 
-    log!((logger) Sort("Successfully sorted entries"));
+    log!((logger.vital) Sort("Successfully sorted entries") as Log);
 }
 
-pub fn sort_uids(uids: &[String], mut logger: impl Logger) -> Box<[String]> {
+pub fn sort_uids(uids: &[String], logger: impl Logger) -> Box<[String]> {
     // load archive & sort if sorting is needed
     let archive = Archive::load(logger.hollow());
     sort(logger.hollow());
 
-    let sorted = list::read(
-        |x| x.collect_string(),
-        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
-        logger.hollow(),
-    ).into_vec();
+    let sorted = read_sorted(&archive, logger.hollow()).into_vec();
     
     // remove unspecified
     sorted.into_iter().filter(|x| uids.contains(x)).collect()
+}
+
+pub fn read_sorted(archive: &Archive, mut logger: impl Logger) -> Box<[String]> {
+    list::read(
+        |x| x.collect_string(),
+        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
+        logger.hollow(),
+    )
 }

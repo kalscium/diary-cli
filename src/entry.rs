@@ -137,7 +137,6 @@ impl Entry {
         if_err!((logger) [Entry, err => ("While writing section list length: {err:?}")] retry write_container!((list) length = new_u16(raw_sections.len() as u16)));
 
         log!((logger) Entry("Storing entry's parsed and checked data into archive..."));
-        log!((logger.error) Entry("if this fails, this may leave your archive (diary) in a corrupted state!") as Warning);
 
         let mut this = Self {
             container,

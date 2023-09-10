@@ -1,5 +1,5 @@
 use soulog::*;
-use crate::{archive::Archive, entry::Entry, moc::MOC};
+use crate::{archive::Archive, entry::Entry, moc::MOC, sort};
 
 pub trait Searchable {
     fn get_uid(&self) -> String;
@@ -40,7 +40,14 @@ pub fn search<T: Searchable>(tags: &[String], items: Vec<T>, logger: impl Logger
 pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: Option<Vec<String>>, mut logger: impl Logger) {
     let archive = Archive::load(logger.hollow());
 
-    let mut entries = archive.list_entries(logger.hollow());
+    // Get entries and mocs
+    sort::sort(logger.hollow());
+    let mut entries: Vec<_> = sort::read_sorted(&archive, logger.hollow())
+        .into_vec()
+        .into_iter()
+        .map(|x| archive.get_entry(x, logger.hollow()).unwrap())
+        .collect();
+
     let mut mocs = archive.list_mocs(logger.hollow());
 
     let filter = match filter {
@@ -49,20 +56,16 @@ pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: O
             log!((logger) List("Listing selected items..."));
 
             let tags = get_unique_tags(&mut entries, &mut mocs, logger.hollow());
-            log!((logger) List("{}", colour_format![green("Tags"), blue(": "), none(&format!("{tags:#?}"))]));
 
+            log!((logger.vital) tags("{tags:#?}") as Result);
             std::mem::drop(tags);
 
             let entry_uids: Vec<String> = entries.into_iter().map(|e| e.uid).collect();
             let moc_uids: Vec<String> = mocs.into_iter().map(|m| m.uid).collect();
 
-            if show_entries {
-                log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:#?}"))]));
-            }
-            
-            if show_mocs {
-                log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:#?}"))]));
-            } return;
+            if show_entries { log!((logger.vital) entries("{entry_uids:#?}") as Result) }
+            if show_mocs { log!((logger.vital) mocs("{moc_uids:#?}") as Result) }
+            return;
         }
     };
 
@@ -81,15 +84,9 @@ pub fn list_command(strict: bool, show_mocs: bool, show_entries: bool, filter: O
 
     log!((logger) List("Listing found entries and mocs..."));
 
-    log!((logger) List("{}", colour_format![green("Tags"), blue(": "), none(&format!("{filter:?}"))]));
-
-    if show_entries {
-        log!((logger) List("{}", colour_format![green("Entries"), blue(": "), none(&format!("{entry_uids:?}"))]));
-    }
-    
-    if show_mocs {
-        log!((logger) List("{}", colour_format![green("MOCs"), blue(": "), none(&format!("{moc_uids:?}"))]));
-    }
+    log!((logger.vital) tags("{filter:?}") as Result);
+    if show_entries { log!((logger.vital) entries("{entry_uids:?}") as Result) }
+    if show_mocs { log!((logger.vital) mocs("{moc_uids:?}") as Result) }
 }
 
 use std::collections::HashSet;

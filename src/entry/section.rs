@@ -62,7 +62,6 @@ impl Section {
         );
 
         log!((logger) Section("Writing entry '{entry}'s section {idx} into archive..."));
-        log!((logger.error) Section("(failure to do so may corrupt archive!)") as Warning);
         let mut this = Self {
             container,
             title: Some(title),

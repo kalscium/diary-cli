@@ -6,7 +6,7 @@ pub fn pull(path: PathBuf, file_name: String, is_moc: bool, uid: String, one_fil
     let archive = Archive::load(logger.hollow());
 
     if_err!((logger) {fs::create_dir_all(&path)} else(err) {
-        log!((logger) Pull("While initialising path '{}': {err:?}; ignoring error...", path.to_string_lossy()) as Inconvenience) 
+        log!((logger.vital) Pull("While initialising path '{}': {err:?}; ignoring error...", path.to_string_lossy()) as Inconvenience) 
     });
     
     if is_moc {
@@ -17,7 +17,7 @@ pub fn pull(path: PathBuf, file_name: String, is_moc: bool, uid: String, one_fil
         pull_entry(archive, path, file_name, uid, one_file, logger.hollow());
     }
 
-    log!((logger) Pull("Successfully pulled config file from archive"));
+    log!((logger.vital) Pull("Successfully pulled config file from archive") as Log);
 }
 
 fn pull_entry(archive: Archive, path: PathBuf, file_name: String, uid: String, one_file: bool, mut logger: impl Logger) {

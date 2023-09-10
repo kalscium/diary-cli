@@ -44,7 +44,7 @@ impl Archive {
         if_err!((logger) [Init, err => ("While writing stack length: {err:?}")] retry write_database!((&database) /order/sorted::length = new_u16(0)));
         if_err!((logger) [Init, err => ("While writing stack length: {err:?}")] retry write_database!((&database) /order/unsorted::length = new_u16(0)));
 
-        log!((logger) Init("Successfully initialised archive '{path_string}'"));
+        log!((logger.vital) Init("Successfully initialised archive '{path_string}'") as Log);
         Self {
             database,
             uid,
@@ -66,7 +66,7 @@ impl Archive {
 
         // Checks if path exists or not
         if !path.is_dir() {
-            log!((logger.error) Archive("Archive '{path_string}' not found; initialising a new one...") as Inconvenience);
+            log!((logger.vital) Archive("Archive '{path_string}' not found; initialising a new one...") as Inconvenience);
             return Self::init(logger)
         };
 
@@ -75,7 +75,7 @@ impl Archive {
         let uid = if_err!((logger) [Archive, err => ("While loading archive uid: {err:?}")] retry (|| search_database!((&database) uid)?.collect_u64())());
         let itver = if_err!((logger) [Archive, err => ("While loading archive itver: {err:?}")] retry (|| search_database!((&database) itver)?.collect_u16())());
 
-        log!((logger) Archive("Successfully loaded archive at '{path_string}'"));
+        log!((logger.verbose) Archive("Successfully loaded archive at '{path_string}'") as Log);
         log!((logger) Archive(""));
 
         Self {
@@ -88,13 +88,13 @@ impl Archive {
     /// Rolls back to last backup
     pub fn rollback(mut logger: impl Logger) {
         log!((logger) RollBack("Rolling back to last backup..."));
-        log!((logger.error) RollBack("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.") as Warning);
+        log!((logger.vital) RollBack("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.") as Warning);
         let path = home_dir().join("backup.ldb");
         if !path.is_file() {
             log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
             return logger.crash();
         } Self::load_backup(path, logger.hollow());
-        log!((logger) RollBack("Successfully rolled back to last backup"));
+        log!((logger.vital) RollBack("Successfully rolled back to last backup") as Log);
     }
 
     /// Backs up home archive to specified path
@@ -113,7 +113,7 @@ impl Archive {
 
         let database = if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry LazyDB::load_dir(&path));
         if_err!((logger) [Backup, err => ("While backing up archive: {err:?}")] retry database.compile(out_path));
-        log!((logger) Backup("Successfully backed up archive '{path_string}' as '{out_string}'"));
+        log!((logger.vital) Backup("Successfully backed up archive '{path_string}' as '{out_string}'") as Log);
         log!((logger) Backup(""));
     }
 
@@ -151,7 +151,7 @@ impl Archive {
             }
 
             if old.itver == new.itver {
-                log!((logger.error) Backup("Detected that backup is the same age as the currently loaded archive (itver is the same)") as Warning);
+                log!((logger.vital) Backup("Detected that backup is the same age as the currently loaded archive (itver is the same)") as Warning);
             }
 
             if old.itver > new.itver {
@@ -163,7 +163,7 @@ impl Archive {
         }
 
         if_err!((logger) [Backup, err => ("While decompiling backup '{path_string}': {err:?}")] retry LazyDB::decompile(path, &archive));
-        log!((logger) Backup("Successfully loaded backup '{path_string}'"));
+        log!((logger.vital) Backup("Successfully loaded backup '{path_string}'") as Log);
     }
 
     /// Wipes the specified archive and asks the user for confirmation
@@ -183,13 +183,13 @@ impl Archive {
         let path = home_dir().join("archive");
         // Check if path exists
         if !path.exists() {
-            log!((logger.error) Wipe("Archive '{}' doesn't exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            log!((logger.vital) Wipe("Archive '{}' doesn't exist; doing nothing", path.to_string_lossy()) as Inconvenience);
             return;
         }
 
         // Wipe archive
         if_err!((logger) [Wipe, err => ("While wiping archive: {err:?}")] retry std::fs::remove_dir_all(&path));
-        log!((logger) Wipe("Successfully wiped archive! Run `diary-cli init` to init a new archive\n"));
+        log!((logger.vital) Wipe("Successfully wiped archive! Run `diary-cli init` to init a new archive\n") as Log);
     }
 
     pub fn commit(&self, entry: impl AsRef<Path>, mut logger: impl Logger) {
@@ -254,7 +254,7 @@ impl Archive {
         let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
         Self::backup(home_dir().join("backup.ldb"), logger.hollow());
 
-        log!((logger) Commit("Successfully commited config to archive"));
+        log!((logger.vital) Commit("Successfully commited config to archive") as Log);
     }
 
     #[inline]
@@ -307,7 +307,7 @@ impl Archive {
         let path = self.database.path().join("entries");
 
         if !path.is_dir() {
-            log!((logger.error) Entries("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            log!((logger.vital) Entries("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
             return Vec::with_capacity(0);
         }
 
@@ -325,7 +325,7 @@ impl Archive {
         let path = self.database.path().join("mocs");
 
         if !path.is_dir() {
-            log!((logger.error) MOCs("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
+            log!((logger.vital) MOCs("Path '{}' does not exist; doing nothing", path.to_string_lossy()) as Inconvenience);
             return Vec::with_capacity(0);
         }
 

@@ -152,7 +152,6 @@ impl MOC {
         if_err!((logger) [MOC, err => ("While writing collection list length: {err:?}")] retry write_container!((list) length = new_u16(raw_collections.len() as u16)));
 
         log!((logger) Entry("Storing moc's parsed and checked data into archive..."));
-        log!((logger.error) Entry("if this fails, this may leave your archive (diary) in a corrupted state!") as Warning);
 
         let mut this = Self {
             uid,

@@ -40,7 +40,6 @@ impl Collection {
         );
 
         log!((logger) Collection("Writing moc '{moc}'s collection {idx} into archive..."));
-        log!((logger.error) Collection("(failure to do so may corrupt archive!)") as Warning);
         let mut this = Self {
             container,
             title: Some(title),

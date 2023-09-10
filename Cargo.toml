@@ -1,6 +1,6 @@
 [package]
 name = "diary-cli"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 description = "A powerful cli for documenting and keeping a diary."
 
@@ -9,6 +9,6 @@ description = "A powerful cli for documenting and keeping a diary."
 [dependencies]
 chrono = "0.4.26"
 lazy-db = "1.5.3"
-soulog = "1.1.0"
+soulog = "1.2.0"
 toml = "0.7.6"
 clap = { version = "4.3.22", features = ["derive"] }

@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 use soulog::*;
 use crate::{archive::Archive, unwrap_opt};
 
@@ -6,7 +5,12 @@ macro_rules! log_attr {
     ([$entry:ident, $logger:ident] $($name:ident$(($multi:expr))?),* $(,)?) => {$(
         let _multi = true;
         $(let _multi = $multi;)?
-        log_attr(stringify!($name), $entry.$name($logger.hollow()), _multi, $logger.hollow());
+        let attr = $entry.$name($logger.hollow());
+        if _multi {
+            log!(($logger.vital) $name("{attr:#?}\n") as Result);
+        } else {
+            log!(($logger.vital) $name("{attr:?}") as Result);
+        }
     )*}
 }
 
@@ -27,7 +31,7 @@ fn about_entry(archive: Archive, uid: String, mut logger: impl Logger) {
 
     // Print the stuff
     log!((logger) About(""));
-    log!((logger) About("{}", colour_format![blue("# "), green("About Entry of uid `"), none(&entry.uid), green("`")]));
+    log!((logger.vital) About("{}", colour_format![blue("# "), green("About Entry of uid `"), none(&entry.uid), green("`")]) as Log);
     log_attr! {
         [entry, logger]
         date(false),
@@ -45,21 +49,12 @@ fn about_moc(archive: Archive, uid: String, mut logger: impl Logger) {
 
     // Print the stuff
     log!((logger) About(""));
-    log!((logger) About("{}", colour_format![blue("# "), green("About MOC of uid `"), none(&moc.uid), green("`")]));
+    log!((logger.vital) About("{}", colour_format![blue("# "), green("About MOC of uid `"), none(&moc.uid), green("`")]) as Log);
     log_attr! {
         [moc, logger]
         tags(false),
         title(false),
         description(false),
         notes,
-    }
-}
-
-fn log_attr(name: &str, attr: impl Debug, multi: bool, mut logger: impl Logger) {
-    let prompt = colour_format![green(name), blue(": ")];
-    if multi {
-        log!((logger) About("{prompt}{attr:#?}\n"));
-    } else {
-        log!((logger) About("{prompt}{attr:?}"));
     }
 }
