@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use lazy_db::*;
 use soulog::*;
 
@@ -83,4 +85,28 @@ pub fn load_length(container: &LazyContainer, mut logger: impl Logger) -> u16 {
         log!((logger.error) ListIO("{err:#?}") as Fatal);
         logger.crash()
     })
+}
+
+pub struct List<T> {
+    _phantom_marker: PhantomData<T>,
+    container: LazyContainer,
+    length: u16,
+    idx: u16,
+}
+
+impl<T> List<T> {
+    pub fn init(container: LazyContainer) {
+        
+    }
+
+    pub fn load(container: LazyContainer) {
+
+    }
+}
+
+impl<T> Iterator for List<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        todo!()
+    }
 }

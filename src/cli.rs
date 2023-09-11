@@ -34,11 +34,16 @@ pub enum Commands {
     },
     #[command(about="Loads a backed up archive")]
     Load {
+        #[arg(short, long, help="Force loads a backup even if you may lose archive data.")]
+        force: bool,
         #[arg(index=1, required=true, help="The path of the backup file you want to load.")]
         file_path: String,
     },
     #[command(about="Rolls back to the last backed up archive")]
-    Rollback,
+    Rollback {
+        #[arg(short, long, help="Force loads a backup even if you may lose archive data.")]
+        force: bool,
+    },
     #[command(about="Returns the days since 2020 from a specified date")]
     Since {
         #[arg(short, long, number_of_values=3, value_names=&["year", "month", "day"])]
@@ -88,6 +93,13 @@ pub enum Commands {
         #[arg(index=1, required=true, help="The uid of the entry or moc")]
         uid: String,
     },
+    #[command(about="Removes an entry or moc from the archive.")]
+    Remove {
+        #[arg(short='m', long, help="Determines if it is a moc or not")]
+        is_moc: bool,
+        #[arg(index=1)]
+        uid: String,
+    },
 }
 
 impl Commands {
@@ -99,8 +111,8 @@ impl Commands {
             Init => {Archive::init(logger);},
             Wipe => Archive::load(logger.hollow()).wipe(logger),
             Commit { file_path } => Archive::load(logger.hollow()).commit(file_path, logger),
-            Load { file_path } => Archive::load_backup(file_path, logger),
-            Rollback => Archive::rollback(logger),
+            Load { file_path, force } => Archive::load_backup(file_path, force, logger),
+            Rollback { force } => Archive::rollback(force, logger),
             Backup { out_path } => {
                 match out_path {
                     Some(path) => Archive::backup(path, logger),
@@ -112,7 +124,8 @@ impl Commands {
             List { strict, tags, show_entries, show_mocs } => search::list_command(strict, show_mocs, show_entries, tags, logger),
             Sort => sort::sort(logger),
             Export { strict, tags, path } => export::export_md(strict, tags, path, logger.hollow()),
-            About { is_moc, uid } => about::about(is_moc, uid, logger)
+            About { is_moc, uid } => about::about(is_moc, uid, logger),
+            Remove { is_moc, uid } => uncommit::uncommmit(uid, is_moc, logger),
         }
     }
 }

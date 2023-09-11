@@ -11,6 +11,7 @@ pub mod search;
 pub mod sort;
 pub mod scribe;
 pub mod about;
+pub mod uncommit;
 
 pub use logger::*;
 pub use scribe::*;

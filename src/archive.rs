@@ -86,14 +86,14 @@ impl Archive {
     }
 
     /// Rolls back to last backup
-    pub fn rollback(mut logger: impl Logger) {
+    pub fn rollback(force: bool, mut logger: impl Logger) {
         log!((logger) RollBack("Rolling back to last backup..."));
         log!((logger.vital) RollBack("Rollback cannot revert successful commits; only unsuccessful ones that corrupt the archive.") as Warning);
         let path = home_dir().join("backup.ldb");
         if !path.is_file() {
             log!((logger.error) RollBack("No recent backups made; cannot rollback") as Fatal);
             return logger.crash();
-        } Self::load_backup(path, logger.hollow());
+        } Self::load_backup(path, force, logger.hollow());
         log!((logger.vital) RollBack("Successfully rolled back to last backup") as Log);
     }
 
@@ -118,7 +118,7 @@ impl Archive {
     }
 
     /// Loads a backup if that backup is the same as the active archive and or newer than the active archive, otherwise errors will be thrown
-    pub fn load_backup(path: impl AsRef<Path>, mut logger: impl Logger) {
+    pub fn load_backup(path: impl AsRef<Path>, force: bool, mut logger: impl Logger) {
         let path = path.as_ref();
         let archive = home_dir().join("archive");
         let archive_string = archive.to_string_lossy();
@@ -134,8 +134,12 @@ impl Archive {
 
         // Check if archive already exists
         if archive.is_dir() {
-            log!((logger) Backup("Detected that there is already a loaded archive at '{archive_string}'"));
+            log!((logger.vital) Backup("Detected that there is already a loaded archive at '{archive_string}'") as Inconvenience);
             let old = Archive::load(logger.hollow()); // Loads old archive
+
+            if force {
+                log!((logger.vital) Backup("Forcefully loading backup; this may result in archive data loss") as Warning);
+            }
 
             // Load new archive
             let new = home_dir().join("new");
@@ -145,17 +149,19 @@ impl Archive {
             let _ = std::fs::remove_dir_all(new.database.path()); // cleanup
 
             // Check if uid is the same and that the itver is higher
-            if new.uid != old.uid {
+            if new.uid != old.uid && !force {
                 log!((logger.error) Backup("Cannot load backup as it is a backup of a different archive (uids don't match)") as Fatal);
+                log!((logger.vital) Backup("If you still want to load it (deleting your current archive in the process) then run the same command but with `-f` to force it.") as Warning);
                 return logger.crash();
             }
 
-            if old.itver == new.itver {
+            if old.itver == new.itver && !force {
                 log!((logger.vital) Backup("Detected that backup is the same age as the currently loaded archive (itver is the same)") as Warning);
             }
 
-            if old.itver > new.itver {
+            if old.itver > new.itver && !force {
                 log!((logger.error) Backup("Cannot load backup as it is older than the currently loaded archive (itver is less)") as Fatal);
+                log!((logger.vital) Backup("If you still want to load it (losing un-backed changes in the process) then run the same command but with `-f` to force it.") as Warning);
                 return logger.crash();
             }
             
@@ -170,9 +176,9 @@ impl Archive {
     pub fn wipe(self, mut logger: impl Logger) {
         // Confirm with the user about the action
         let expected = "I, as the user, confirm that I fully understand that I am wiping my ENTIRE archive and that this action is permanent and irreversible";
-        log!((logger) Wipe("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):"));
+        log!((logger.vital) Wipe("To confirm with wiping your ENTIRE archive PERMANENTLY enter the phrase below (without quotes):") as Log);
         if_err!((logger) [Wipe, err => ("Entered phrase incorrect, please retry")] retry {
-            log!((logger) Wipe("\"{expected}\""));
+            log!((logger.vital) Wipe("\"{expected}\"") as Log);
             let input = logger.ask("Wipe", "Enter the phrase");
             if &input[0..input.len() - 1] != expected { Err(()) }
             else { Ok(()) }
@@ -192,8 +198,8 @@ impl Archive {
         log!((logger.vital) Wipe("Successfully wiped archive! Run `diary-cli init` to init a new archive\n") as Log);
     }
 
-    pub fn commit(&self, entry: impl AsRef<Path>, mut logger: impl Logger) {
-        let config = entry.as_ref();
+    pub fn commit(&self, config: impl AsRef<Path>, mut logger: impl Logger) {
+        let config = config.as_ref();
         let path = home_dir().join("archive");
         let path_string = path.to_string_lossy();
 
@@ -249,10 +255,6 @@ impl Archive {
         // Update itver
         log!((logger) Commit("Updating archive itver..."));
         if_err!((logger) [Commit, err => ("While update archive itver: {err:?}")] retry write_database!((self.database) itver = new_u16(self.itver + 1)));
-
-        // Backup to not rollback commit
-        let _ = std::fs::remove_file(home_dir().join("backup.ldb")); // Clean up
-        Self::backup(home_dir().join("backup.ldb"), logger.hollow());
 
         log!((logger.vital) Commit("Successfully commited config to archive") as Log);
     }
