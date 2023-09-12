@@ -83,7 +83,7 @@ pub fn sort_uids(uids: &[String], logger: impl Logger) -> Box<[String]> {
 pub fn read_sorted(archive: &Archive, mut logger: impl Logger) -> Box<[String]> {
     list::read(
         |x| x.collect_string(),
-        &if_err!((logger) [Sort, err => ("While reading sorted list length: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
+        &if_err!((logger) [Sort, err => ("While reading sorted list: {err:?}")] retry search_database!((archive.database()) /order/sorted)),
         logger.hollow(),
     )
 }

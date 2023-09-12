@@ -111,7 +111,7 @@ impl Logger for Quiet {
 
     fn crash<T>(&mut self) -> T {
         let mut logger = Self::new();
-        log!((logger.vital) Diary("if the fatal error occurred during any writing to the archive, the archive may be corrupted! If so, then use `diary-cli rollback` to roll-back to the latest backup (that was made before any modification of the archive") as Warning);
+        log!((logger.vital) Diary("The archive may now be corrupted! Use `diary-cli rollback` to roll-back to the latest backup (that was made before any modification of the archive") as Warning);
         std::process::exit(1)
     }
 

@@ -87,26 +87,58 @@ pub fn load_length(container: &LazyContainer, mut logger: impl Logger) -> u16 {
     })
 }
 
-pub struct List<T> {
+pub struct List<T, L: Logger, F: Fn(LazyData) -> Result<T, LDBError>> {
     _phantom_marker: PhantomData<T>,
+    read_f: F,
     container: LazyContainer,
+    logger: L,
     length: u16,
     idx: u16,
 }
 
-impl<T> List<T> {
-    pub fn init(container: LazyContainer) {
-        
+impl<T, L: Logger, F: Fn(LazyData) -> Result<T, LDBError>> List<T, L, F> {
+    pub fn init(container: LazyContainer, read_f: F, mut logger: L) -> Self {
+        if_err!((logger) [List, err => ("While inititalising list: {err:?}")] retry write_container!((container) length = new_u16(0)));
+        Self {
+            _phantom_marker: PhantomData,
+            container,
+            read_f,
+            logger: logger.hollow(),
+            length: 0,
+            idx: 0,
+        }
     }
 
-    pub fn load(container: LazyContainer) {
+    pub fn load(container: LazyContainer, read_f: F, mut logger: L) -> Self {
+        let length = if_err!((logger) [List, err => ("While loading list: {err:?}")] retry 
+            if_err!((logger) [List, err => ("While loading list: {err:?}")] retry
+                search_container!((container) length)
+            ).collect_u16()
+        );
 
+        Self {
+            _phantom_marker: PhantomData,
+            container,
+            read_f,
+            length,
+            logger: logger.hollow(),
+            idx: 0,
+        }
     }
 }
 
-impl<T> Iterator for List<T> {
+impl<T, L:Logger, F: Fn(LazyData) -> Result<T, LDBError>> Iterator for List<T, L, F> {
     type Item = T;
+
     fn next(&mut self) -> Option<T> {
-        todo!()
+        if self.idx >= self.length { return None };
+        let mut logger = self.logger.hollow();
+        let f: &F = &self.read_f;
+
+        let item = if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] retry self.container.read_data(self.idx.to_string()));
+        Some(if_err!((logger) [ListIO, err => ("While reading list element: {:?}", err)] {f(item)} crash {
+            log!((logger.error) ListIO("{err:#?}") as Fatal);
+            logger.crash()
+        }))
     }
 }

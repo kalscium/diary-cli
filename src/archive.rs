@@ -12,7 +12,7 @@ use crate::moc::MOC;
 pub struct Archive {
     database: LazyDB,
     uid: u64,
-    itver: u16,
+    pub itver: u16,
 }
 
 impl Archive {

@@ -35,7 +35,7 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
     let mut scribe = Scribe::new(path.join(&entry.uid).with_extension("md"), logger.hollow());
 
     // Tags, title and description
-    let date = entry.date(logger.hollow()).clone();
+    let date = *entry.date(logger.hollow());
     scribe_tags_n_date(entry.tags(logger.hollow()), &date, &mut scribe);
     scribe_write!((scribe) "# ", entry.title(logger.hollow()), "\n");
     scribe.write_line("---");
