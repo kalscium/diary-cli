@@ -13,7 +13,15 @@ macro_rules! get {
         let obj = unwrap_opt!(($table.get(key)) with $logger, format: MOC("moc '{0}' must have '{key}' attribute", $moc));
 
         unwrap_opt!((obj.$func()) with $logger, format: MOC("moc '{0}'s '{key}' attribute must be of correct type", $moc))
-    }}
+    }};
+
+    ($var:ident = $key:ident at $entry:ident from $table:ident as $func:ident with $logger:ident or $default:expr) => {
+        let key = stringify!($key);
+        let default = $default;
+        let $var = $table.get(key)
+            .map(|x| unwrap_opt!((x.$func()) with $logger, format: MOC("moc '{0}'s '{key}' attribute must be of the correct type", $entry)))
+            .unwrap_or(&default);
+    };
 }
 
 pub struct MOC {
@@ -123,7 +131,7 @@ impl MOC {
 
         let title = get!(title at moc_path from moc_table as as_str with logger).to_string();
         let description = get!(description at moc_path from moc_table as as_str with logger).to_string();
-        let raw_notes = get!(notes at moc_path from moc_table as as_array with logger);
+        get!(raw_notes = notes at moc_path from moc_table as as_array with logger or Vec::<toml::Value>::with_capacity(0));
         let raw_tags = get!(tags at moc_path from moc_table as as_array with logger);
         let raw_collections = get!(collection at moc_path from table as as_array with logger);
 

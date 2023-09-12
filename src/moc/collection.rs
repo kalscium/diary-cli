@@ -5,12 +5,20 @@ use toml::{Table, Value};
 
 // Some ease of life macros
 macro_rules! get {
-    ($key:ident at ($entry:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
+    ($key:ident at ($moc:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident) => {{
         let key = stringify!($key);
-        let obj = unwrap_opt!(($table.get(key)) with $logger, format: Collection("moc '{0}', collection {1} must have '{key}' attribute", $entry, $idx));
+        let obj = unwrap_opt!(($table.get(key)) with $logger, format: Collection("moc '{0}', collection {1} must have '{key}' attribute", $moc, $idx));
 
-        unwrap_opt!((obj.$func()) with $logger, format: Collection("moc '{0}', collection {1}'s '{key}' attribute must be of the correct type", $entry, $idx))
-    }}
+        unwrap_opt!((obj.$func()) with $logger, format: Collection("moc '{0}', collection {1}'s '{key}' attribute must be of the correct type", $moc, $idx))
+    }};
+
+    ($var:ident = $key:ident at ($moc:ident, $idx:ident) from $table:ident as $func:ident with $logger:ident or $default:expr) => {
+        let key = stringify!($key);
+        let default = $default;
+        let $var = $table.get(key)
+            .map(|x| unwrap_opt!((x.$func()) with $logger, format: Collection("moc '{0}'s '{key}' attribute must be of the correct type", $moc)))
+            .unwrap_or(&default);
+    };
 }
 
 pub struct Collection {
@@ -27,7 +35,7 @@ impl Collection {
         // Get the basic needed data
         log!((logger) Collection("Reading collection's data..."));
         let title = get!(title at (moc, idx) from table as as_str with logger).to_string();
-        let raw_notes = get!(notes at (moc, idx) from table as as_array with logger);
+        get!(raw_notes = notes at (moc, idx) from table as as_array with logger or Vec::<toml::Value>::with_capacity(0));
         let raw_include = get!(include at (moc, idx) from table as as_array with logger);
 
         // Parse arrays
