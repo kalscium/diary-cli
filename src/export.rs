@@ -123,9 +123,8 @@ fn export_section_content(scribe: &mut Scribe<impl Logger>, section: &mut Sectio
 
 fn scribe_tags(tags: &[String], scribe: &mut Scribe<impl Logger>) {
     scribe.write_line("---");
-    scribe.write("tags:\n\t- diary-cli\n");
-    tags.iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
-    scribe.new_line();
+    scribe.write("tags:\n  - obsidian-md\n  - diary-cli\n");
+    tags.iter().for_each(|x| scribe_write!((scribe) "  - ", x, "\n"));
     scribe.write_line("---");
 }
 
