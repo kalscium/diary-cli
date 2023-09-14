@@ -39,17 +39,23 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
     scribe_tags_n_date(entry.tags(logger.hollow()), &date, &mut scribe);
     scribe_write!((scribe) "# ", entry.title(logger.hollow()), "\n");
     scribe.write_line("---");
-    scribe_write!((scribe) "**Description:** ", entry.description(logger.hollow()), "\n");
+    scribe_write!((scribe) "**Description:** ", entry.description(logger.hollow()), "\n\n");
 
     // Notes
-    scribe.write_line("## Notes");
-    entry.notes(logger.hollow()).iter().for_each(|x| scribe_write!((scribe) "- ", x, "\n"));    
+    let notes = entry.notes(logger.hollow());
+    if notes.len() > 0 {
+        scribe.write_line("## Notes");
+        notes.iter().for_each(|x| scribe_write!((scribe) "- ", x, "\n"));  
+    }
 
     // Sections' notes
     entry.sections(logger.hollow()).iter_mut().for_each(|section| {
-        scribe_write!((scribe) "- #### ", section.title(logger.hollow()), "\n");
-        section.notes(logger.hollow()).iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
-        section.clear_cache();
+        let title = section.title(logger.hollow()).clone();
+        let notes = section.notes(logger.hollow());
+        if notes.len() > 0 {
+            scribe_write!((scribe) "- #### ", &title, "\n");
+            notes.iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
+        } section.clear_cache();
     });
     scribe.write_line("---");
 
@@ -67,17 +73,23 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
     scribe_tags(moc.tags(logger.hollow()), &mut scribe);
     scribe_write!((scribe) "# ", moc.title(logger.hollow()), "\n");
     scribe.write_line("---");
-    scribe_write!((scribe) "**Description:** ", moc.description(logger.hollow()), "\n");
+    scribe_write!((scribe) "**Description:** ", moc.description(logger.hollow()), "\n\n");
 
     // Notes
-    scribe.write_line("## Notes");
-    moc.notes(logger.hollow()).iter().for_each(|x| scribe_write!((scribe) "- ", x, "\n"));  
+    let notes = moc.notes(logger.hollow());
+    if notes.len() > 0 {
+        scribe.write_line("## Notes");
+        notes.iter().for_each(|x| scribe_write!((scribe) "- ", x, "\n"));  
+    }
 
     // Collections' notes
     moc.collections(logger.hollow()).iter_mut().for_each(|collection| {
-        scribe_write!((scribe) "- #### ", collection.title(logger.hollow()), "\n");
-        collection.notes(logger.hollow()).iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
-        collection.clear_cache();
+        let title = collection.title(logger.hollow()).clone();
+        let notes = collection.notes(logger.hollow());
+        if notes.len() > 0 {
+            scribe_write!((scribe) "- #### ", &title, "\n");
+            notes.iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
+        } collection.clear_cache();
     });
     scribe.write_line("---");
 
