@@ -43,7 +43,9 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
 
     // Notes
     let notes = entry.notes(logger.hollow());
+    let mut notes_header_written_to: bool = false;
     if notes.len() > 0 {
+        notes_header_written_to = true;
         scribe.write_line("## Notes");
         notes.iter().for_each(|x| scribe_write!((scribe) "- ", x, "\n"));  
     }
@@ -53,6 +55,7 @@ pub fn export_entry(path: &Path, entry: &mut Entry, mut logger: impl Logger) {
         let title = section.title(logger.hollow()).clone();
         let notes = section.notes(logger.hollow());
         if notes.len() > 0 {
+            if !notes_header_written_to { scribe.write_line("## Notes"); notes_header_written_to = true; }
             scribe_write!((scribe) "- #### ", &title, "\n");
             notes.iter().for_each(|x| scribe_write!((scribe) "\t- ", x, "\n"));
         } section.clear_cache();
@@ -100,11 +103,14 @@ pub fn export_moc(path: &Path, moc: &mut MOC, archive: &Archive, mut logger: imp
 }
 
 fn export_collection_content(scribe: &mut Scribe<impl Logger>, collection: &mut Collection, archive: &Archive, logger: impl Logger) {
-    scribe_write!((scribe) "## ", collection.title(logger.hollow()), "\n");
-
     let tags = collection.include(logger.hollow());
+
     let moc_uids = search::search_strict(tags, archive.list_mocs(logger.hollow()), logger.hollow());
     let mut entry_uids = search::search_strict(tags, archive.list_entries(logger.hollow()), logger.hollow());
+
+    if moc_uids.is_empty() && entry_uids.is_empty() { return; }
+    scribe_write!((scribe) "## ", collection.title(logger.hollow()), "\n");
+
     entry_uids = sort_uids(&entry_uids, logger.hollow()).to_vec(); // Sorting stuff
 
     moc_uids.into_iter()
